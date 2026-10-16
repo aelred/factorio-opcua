@@ -84,9 +84,7 @@ RCON). The host is admin automatically.
 4. Run the bridge against it:
    `FACTORIO_RCON_PASSWORD=<pw> factorio-opc`.
 
-With you in the game, auto-pause doesn't apply. The game pauses while
-you're in a menu that pauses multiplayer, such as the main menu, but it
-keeps running while you're in the map editor.
+With you in the game, the server's auto-pause doesn't come into play.
 
 GUI, graphics, blueprint handling and the UaExpert walkthrough need a real
 client; see
