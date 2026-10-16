@@ -29,5 +29,6 @@ mode is convenient).
       values (they appear under "Signals written by OPC"). Then **edit the
       group** on the original combinator: the writer's signals must not
       change, because it should no longer be linked to the group.
-      *(First half confirmed 2026-10-16; the edit-the-group check is still open.)*
 - [x] A player typing `/opc_snapshot` in chat is told it is RCON-only.
+
+Last full pass: 2026-10-16, opc-io 0.2.0, all items passed.
