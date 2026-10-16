@@ -32,3 +32,26 @@ mode is convenient).
 - [x] A player typing `/opc_snapshot` in chat is told it is RCON-only.
 
 Last full pass: 2026-10-16, opc-io 0.2.0, all items passed.
+
+## Bridge in UaExpert (or another OPC UA client)
+
+Setup: `scripts/dev-server.sh up` (or your own server with RCON), then
+`factorio-opc --rcon-password-file .dev/factorio/config/rconpw` (or
+`--config bridge/example.toml`). Connect UaExpert to
+`opc.tcp://127.0.0.1:4840/factorio-opc/` with security None and anonymous
+login. Building entities needs a game client connected to the server, or
+`/sc` commands over RCON.
+
+- [ ] Factorio/Status shows Connected = true, plus the game tick, versions
+      and latency.
+- [ ] Readers and Writers list your in-game tags; renaming a tag in game
+      updates the tree within a second (you may need to refresh the browse
+      view).
+- [ ] Reader values update live in the Data Access view as the circuit
+      changes, and Total = Red + Green.
+- [ ] Calling `SetSignals` on a writer with `{"virtual/signal-A": 5}` and
+      `merge` makes the signal appear in game and under `Signals/`.
+- [ ] Writing a writer's signal node changes the in-game output; writing a
+      reader node is refused.
+- [ ] Stopping the Factorio server makes values go Uncertain and Connected
+      false; starting it again brings them back to Good.

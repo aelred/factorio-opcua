@@ -127,11 +127,13 @@ Objects/
 - Signal nodes are created the first time a signal appears and are then kept
   (value 0) so client subscriptions stay valid. A `GeneralModelChangeEvent`
   fires when nodes are added or removed.
-- Writes to `Writers/<tag>/Signals/<sig>` turn into `/opc_write`. Writes are
-  batched per poll cycle.
-- Quality: while RCON is down, all values switch to `BadNotConnected` (or
-  `UncertainLastUsableValue`). Source timestamps are taken from the game tick
-  in the poll reply.
+- Writes to `Writers/<tag>/Signals/<sig>` turn into `/opc_write`. *(As
+  built: each client write request goes to the game straight away, grouped
+  per writer, and the client receives the game's verdict as its status
+  code. That proved simpler and more useful than batching per poll cycle.)*
+- Quality: while RCON is down, all values keep their last value with
+  `Uncertain_NoCommunicationLastUsableValue`. *(As built: SourceTimestamp
+  is the poll's receive time; the game tick is in `Status/GameTick`.)*
 
 ### 3.3 Security
 - Endpoints: `None` for local development only, and
@@ -159,7 +161,8 @@ docs/                  setup, address-space reference, protocol spec
 2. ✅ **Mod MVP:** done. Protocol in `docs/protocol.md`; the GUI and
    graphics still need a pass in a game client (`docs/manual-test-checklist.md`). the Writer and Reader entities, the registry, a name GUI, and
    `hello`/`browse`/`snapshot`/`write`.
-3. **Bridge MVP:** RCON client, static address space from browse, 10 Hz
+3. ✅ **Bridge MVP:** done; see `docs/address-space.md`. The UaExpert
+   walkthrough is in `docs/manual-test-checklist.md`. RCON client, static address space from browse, 10 Hz
    snapshot polling, writable writer nodes. Verified in UaExpert.
 4. **Deltas and dynamic model:** `opc_poll` deltas, model-change events,
    rename and remove handling, reconnect and resync, status codes.
@@ -190,6 +193,11 @@ docs/                  setup, address-space reference, protocol spec
   accept either form.
 - GUI, graphics and blueprint/paste paths can't be tested headless; they
   need the manual checklist in a game client before a release.
+
+- `asyncua` notes from M3: a user logging in as "admin" would skip
+  access-level checks, so the bridge turns remote admin off. Exceptions
+  raised in methods become `BadUnexpectedError`, so methods return a status
+  code instead.
 
 ## 7. Resolved scope
 Resolved:

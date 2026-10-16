@@ -4,11 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "factorio-opc"
-version = "0.1.0"
+version = "0.3.0"
 description = "OPC UA server bridging Factorio circuit networks over RCON"
 license = "MIT"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = ["asyncua>=2.1,<3"]
+
+[project.scripts]
+factorio-opc = "factorio_opc.__main__:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "pytest-asyncio>=0.23"]
