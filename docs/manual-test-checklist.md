@@ -24,7 +24,7 @@ mode is convenient).
       `name-2`. Also check robot-built ghosts.
 - [x] Shift-click paste from writer to reader leaves the reader outputting
       nothing.
-- [ ] Shift-click paste from a normal constant combinator that uses a
+- [x] Shift-click paste from a normal constant combinator that uses a
       logistic group onto a writer: the writer takes a copy of the group's
       values (they appear under "Signals written by OPC"). Then **edit the
       group** on the original combinator: the writer's signals must not
