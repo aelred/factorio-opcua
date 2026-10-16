@@ -58,6 +58,36 @@ Server data, including the generated RCON password in
 `.dev/factorio/config/rconpw`, lives in `.dev/`, which git ignores. Run
 `scripts/dev-server.sh up` again after editing the mod to reload it.
 
+### Testing with a game client and cheats
+
+The dev server only lets admins use `/c`, `/editor` and `/cheat`. Two ways
+around that:
+
+**Make yourself admin on the dev server.** Pass your Factorio username when
+starting it:
+```sh
+FACTORIO_ADMINS=yourname scripts/dev-server.sh up
+```
+You become admin when you join (the server is at `localhost:34197`, or the
+machine's address). From an RCON client you can also run
+`/promote yourname`, which works even before you have joined.
+
+**Or skip the server and host from your own game.** The game client
+accepts RCON when it **hosts a multiplayer game** (single player has no
+RCON). The host is admin automatically.
+1. Copy `dist/opc-io_<version>.zip` into your mods folder
+   (macOS: `~/Library/Application Support/factorio/mods`).
+2. Start Factorio with `--rcon-port 27015 --rcon-password <pw>`. In Steam,
+   put that in Factorio's Launch Options. Without Steam, on macOS, run
+   `/Applications/factorio.app/Contents/MacOS/factorio --rcon-port 27015 --rcon-password <pw>`.
+3. Choose Multiplayer → Host new game (or Host saved game).
+4. Run the bridge against it:
+   `FACTORIO_RCON_PASSWORD=<pw> factorio-opc`.
+
+With you in the game, auto-pause doesn't apply. The game pauses while
+you're in a menu that pauses multiplayer, such as the main menu, but it
+keeps running while you're in the map editor.
+
 GUI, graphics, blueprint handling and the UaExpert walkthrough need a real
 client; see
 [docs/manual-test-checklist.md](docs/manual-test-checklist.md).
