@@ -1,0 +1,12 @@
+# Local development server: Factorio 2.0 headless with RCON and the opc-io mod.
+# Start with scripts/dev-server.sh, which copies the mod into .dev/ first.
+services:
+  factorio:
+    image: factoriotools/factorio:2.0.77
+    environment:
+      DLC_SPACE_AGE: "false"
+    ports:
+      - "34197:34197/udp"
+      - "127.0.0.1:27015:27015/tcp"
+    volumes:
+      - ../.dev/factorio:/factorio

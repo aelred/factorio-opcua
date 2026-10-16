@@ -17,7 +17,7 @@ Decisions so far:
 | Writes       | Level (latched) values only — no pulse/one-shot writes |
 | Servers      | One Factorio server per bridge instance |
 | Distribution | GitHub releases (mod zip + Python package), not the mod portal |
-| Licence      | *TBD* — see §7 |
+| Licence      | MIT |
 
 ---
 
@@ -93,16 +93,17 @@ multiplayer-safe.
 ## 3. Component B — Bridge (`bridge/`, Python)
 
 ### 3.1 Modules
-- `rcon.py`: a small asyncio Source-RCON client (auth, request IDs,
-  multi-packet replies, reconnect with backoff). It's about 100 lines, which
-  avoids blocking third-party libraries.
+- `rcon.py` (done in M1): a small asyncio Source-RCON client with auth,
+  request IDs and pipelining. Factorio replies with one packet of any size,
+  so no reassembly is needed. Reconnects with backoff live in `game.py`.
 - `game.py`: a typed wrapper over the mod commands (handshake and version
   check, browse, poll, write), with a serialized command queue because RCON
   is one request at a time.
 - `model.py`: builds and syncs the OPC UA address space from browse results
   and `model_version`.
 - `server.py`: the asyncua server, the poll loop (`poll_hz`, default 10,
-  validated range 1–30), and the write handlers.
+  validated range 1–30). Each cycle pipelines its reads and writes so they
+  land in one game tick, and the write handlers.
 - `config.py`: TOML config covering the RCON host, port and password, the
   OPC endpoint, `poll_hz`, security policy and users. CLI flags and
   environment variables override the file (for example `--poll-hz 5`).
@@ -148,7 +149,7 @@ docs/                  setup, address-space reference, protocol spec
 ```
 
 ## 5. Milestones
-1. **Spike (de-risk):** headless server in Docker, a trivial mod command, and
+1. ✅ **Spike (de-risk):** done; results in `docs/spike-results.md`. headless server in Docker, a trivial mod command, and
    a Python RCON round-trip. Measure latency and the maximum reply size, and
    check behaviour while the server is auto-paused (the plan is to recommend
    `auto_pause=false`).
@@ -165,19 +166,24 @@ docs/                  setup, address-space reference, protocol spec
    into `mods/`), `pip install`able bridge, Docker compose example, docs, and CI (busted, pytest, and an
    optional headless e2e job).
 
-## 6. Risks / to verify in spike
-- RCON reply size limits and multi-packet framing in Factorio.
-  Mitigation: deltas, plus chunking with `/opc_poll` continuation.
-- RCON throughput, since commands run on the next tick. The 10 Hz default
-  should be comfortable; the spike should find the practical ceiling so
-  `poll_hz` gets a sensible upper bound.
-- UPS cost of reading many circuit networks per poll. The mitigation is
-  per-tick caching of `network_id` → signals so a shared network is read
-  once.
-- Exact 2.0 API for the constant-combinator sections, and quality on
-  signals.
+## 6. Risks (updated after the M1 spike)
+- ~~RCON reply size limits~~: resolved. Replies are a single packet of any
+  size (10 MB tested). Sending only changes still matters for speed.
+- RCON round-trips take one tick (~16.7 ms). Sequential polling tops out
+  near 30 Hz, so `poll_hz` is capped at 30.
+- **An uncaught Lua error in a command stops the server.** All handlers go
+  through the `pcall` wrapper in `control.lua`, and request parsing must
+  assume malformed input.
+- Auto-pause: with no players, each RCON command advances the game one
+  tick. Document `auto_pause: false`, and show `tick_paused` under
+  `Status/`.
+- UPS cost of reading many circuit networks per poll is still unmeasured
+  (fake payloads had no effect at 60 UPS). Mitigation: read each
+  `network_id` once per poll.
+- Exact 2.0 API for the constant-combinator sections and quality on
+  signals: to be confirmed in M2.
 
-## 7. Resolved scope / remaining question
+## 7. Resolved scope
 Resolved:
 - Factorio 2.0 only; no 1.1 compatibility layer.
 - 10 Hz default update rate, configurable. One-tick pulses may be missed and
@@ -186,8 +192,4 @@ Resolved:
 - One Factorio server per bridge; run a second bridge on another port for
   another server.
 - Not published on the mod portal.
-
-Remaining: choose a licence. Candidates are MIT, Apache-2.0, MPL-2.0 or
-GPL-3.0. Note that the `asyncua` dependency is LGPL-3.0, which is compatible
-with all of these as an unmodified dependency, and that any sprites copied
-from the base game stay under Wube's terms rather than the repo licence.
+- Licence: MIT.
