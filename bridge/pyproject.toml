@@ -15,6 +15,3 @@ dev = ["pytest>=8", "pytest-asyncio>=0.23"]
 
 [tool.setuptools.packages.find]
 include = ["factorio_opc*"]
-
-[tool.pytest.ini_options]
-asyncio_mode = "auto"

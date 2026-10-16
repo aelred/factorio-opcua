@@ -1,0 +1,3 @@
+# Everything needed to run all tests: pip install -r requirements-dev.txt
+-e ./bridge[dev]
+lupa>=2.0  # runs the mod's pure Lua modules under Lua 5.2 in mod/tests

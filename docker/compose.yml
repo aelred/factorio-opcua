@@ -4,7 +4,7 @@ services:
   factorio:
     image: factoriotools/factorio:2.0.77
     environment:
-      DLC_SPACE_AGE: "false"
+      DLC_SPACE_AGE: "${DLC_SPACE_AGE:-false}"  # set DLC_SPACE_AGE=true to test quality signals
     ports:
       - "34197:34197/udp"
       - "127.0.0.1:27015:27015/tcp"

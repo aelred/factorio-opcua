@@ -47,9 +47,9 @@ multiplayer-safe.
 - **OPC Writer** (OPC → game). Based on the `constant-combinator` prototype.
   The bridge sets its output signals through the 2.0 logistic-section API
   (`control_behavior.get_section(1)` with `set_slot` or `filters`).
-- **OPC Reader** (game → OPC). A small entity with circuit connectors that
-  only listens, for example a lamp-based or `simple-entity` prototype. It
-  must not emit anything itself, so the values it reads are clean. Values
+- **OPC Reader** (game → OPC). Also a constant-combinator prototype, kept
+  disabled with no sections by script, so it emits nothing and the values
+  it reads are clean. Values
   come from `entity.get_circuit_network(defines.wire_connector_id.circuit_red / circuit_green)`
   and `.signals`. Red and green are reported separately and also summed.
 - Item, recipe, technology unlock (or unlocked from the start), and simple
@@ -79,6 +79,9 @@ multiplayer-safe.
 | `/opc_snapshot` | All current values (on connect or resync) | same shape, full |
 | `/opc_write <json>` | `{tag, signals:{sig:val}, mode:"merge"\|"replace"}` | `{ok, error?}` |
 
+- *(As built in M2: `/opc_poll` is deferred to M4; `/opc_snapshot` returns
+  red and green separately and the bridge computes Total. Writer values live
+  in the combinator itself, not in `storage`. See `docs/protocol.md`.)*
 - Signals are keyed as `type/name[/quality]`, for example `item/iron-plate`,
   `virtual/signal-A` and `item/iron-plate/rare`. Values are int32. An absent
   signal means 0, following circuit semantics.
@@ -141,7 +144,7 @@ Objects/
 ## 4. Repository layout
 ```
 mod/opc-io/            info.json, data.lua, control.lua, locale/, graphics/, lib/*.lua
-mod/tests/             busted unit tests for pure Lua (deltas, signal keys)
+mod/tests/             pytest + lupa (Lua 5.2) unit tests; mod/tests/integration against a live server
 bridge/factorio_opc/   rcon.py, game.py, model.py, server.py, config.py, __main__.py
 bridge/tests/          pytest with a fake RCON server; asyncua client e2e
 docker/                compose: factoriotools/factorio headless + bridge
@@ -153,7 +156,8 @@ docs/                  setup, address-space reference, protocol spec
    a Python RCON round-trip. Measure latency and the maximum reply size, and
    check behaviour while the server is auto-paused (the plan is to recommend
    `auto_pause=false`).
-2. **Mod MVP:** the Writer and Reader entities, the registry, a name GUI, and
+2. ✅ **Mod MVP:** done. Protocol in `docs/protocol.md`; the GUI and
+   graphics still need a pass in a game client (`docs/manual-test-checklist.md`). the Writer and Reader entities, the registry, a name GUI, and
    `hello`/`browse`/`snapshot`/`write`.
 3. **Bridge MVP:** RCON client, static address space from browse, 10 Hz
    snapshot polling, writable writer nodes. Verified in UaExpert.
@@ -180,8 +184,12 @@ docs/                  setup, address-space reference, protocol spec
 - UPS cost of reading many circuit networks per poll is still unmeasured
   (fake payloads had no effect at 60 UPS). Mitigation: read each
   `network_id` once per poll.
-- Exact 2.0 API for the constant-combinator sections and quality on
-  signals: to be confirmed in M2.
+- ~~Exact 2.0 API for constant-combinator sections and quality~~:
+  confirmed in M2 on base and Space Age.
+- `helpers.table_to_json` writes empty arrays as `{}`, so the bridge must
+  accept either form.
+- GUI, graphics and blueprint/paste paths can't be tested headless; they
+  need the manual checklist in a game client before a release.
 
 ## 7. Resolved scope
 Resolved:
