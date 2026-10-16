@@ -22,9 +22,11 @@ localhost or a trusted network.
 
 1. Install the mod: `scripts/package-mod.sh`, then copy
    `dist/opc-io_<version>.zip` into the server's `mods/` folder.
-2. Run the server with RCON enabled, for example
-   `--rcon-port 27015 --rcon-password <pw>`, and set
-   `"auto_pause": false`.
+2. Run a dedicated (headless) server with RCON enabled, for example
+   `factorio --start-server <save> --rcon-port 27015 --rcon-password <pw>`,
+   and set `"auto_pause": false` in its server settings. To host from your
+   game client instead, see
+   [Testing with a game client](#testing-with-a-game-client-and-cheats).
 3. Install and start the bridge:
    ```sh
    pip install ./bridge
@@ -72,15 +74,31 @@ You become admin when you join (the server is at `localhost:34197`, or the
 machine's address). From an RCON client you can also run
 `/promote yourname`, which works even before you have joined.
 
-**Or skip the server and host from your own game.** The game client
-accepts RCON when it **hosts a multiplayer game** (single player has no
-RCON). The host is admin automatically.
+**Or skip the server and host from your own game.** When you host a
+multiplayer game from the game's menu, it can run RCON too. The command-line
+flags `--rcon-port` and `--rcon-password` don't apply here; they're only
+read by a server started with `--start-server`. A game hosted from the menu
+uses two settings in `config.ini` instead. Single player never runs RCON,
+and the host is admin automatically.
+
 1. Copy `dist/opc-io_<version>.zip` into your mods folder
    (macOS: `~/Library/Application Support/factorio/mods`).
-2. Start Factorio with `--rcon-port 27015 --rcon-password <pw>`. In Steam,
-   put that in Factorio's Launch Options. Without Steam, on macOS, run
-   `/Applications/factorio.app/Contents/MacOS/factorio --rcon-port 27015 --rcon-password <pw>`.
-3. Choose Multiplayer → Host new game (or Host saved game).
+2. **Quit Factorio**, then edit `config.ini`. On macOS it's
+   `~/Library/Application Support/factorio/config/config.ini`; on Windows,
+   `%APPDATA%\Factorio\config\config.ini`; on Linux,
+   `~/.factorio/config/config.ini`. In its `[other]` section, uncomment and
+   set:
+   ```ini
+   local-rcon-socket=127.0.0.1:27015
+   local-rcon-password=<pw>
+   ```
+   The default `0.0.0.0:0` means RCON is off. `127.0.0.1` keeps RCON to
+   your own machine; `0.0.0.0` would open it to your network.
+   Edit it with the game closed, because Factorio can overwrite
+   `config.ini` when it exits.
+3. Start Factorio and choose Multiplayer → Host new game (or Host saved game).
+   `factorio-current.log` (in the folder above `config/`) should now show
+   `Starting RCON interface at IP ADDR:({127.0.0.1:27015})`.
 4. Run the bridge against it:
    `FACTORIO_RCON_PASSWORD=<pw> factorio-opc`.
 

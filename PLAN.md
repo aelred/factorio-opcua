@@ -154,16 +154,17 @@ docs/                  setup, address-space reference, protocol spec
 ```
 
 ## 5. Milestones
-1. ✅ **Spike (de-risk):** done; results in `docs/spike-results.md`. headless server in Docker, a trivial mod command, and
-   a Python RCON round-trip. Measure latency and the maximum reply size, and
-   check behaviour while the server is auto-paused (the plan is to recommend
-   `auto_pause=false`).
-2. ✅ **Mod MVP:** done. Protocol in `docs/protocol.md`; the GUI and
-   graphics still need a pass in a game client (`docs/manual-test-checklist.md`). the Writer and Reader entities, the registry, a name GUI, and
-   `hello`/`browse`/`snapshot`/`write`.
-3. ✅ **Bridge MVP:** done; see `docs/address-space.md`. The UaExpert
-   walkthrough is in `docs/manual-test-checklist.md`. RCON client, static address space from browse, 10 Hz
-   snapshot polling, writable writer nodes. Verified in UaExpert.
+1. ✅ **Spike (de-risk):** headless server in Docker, a trivial mod command,
+   and a Python RCON round-trip; measure latency and the maximum reply size,
+   and check behaviour while the server is auto-paused. Done; results in
+   `docs/spike-results.md`.
+2. ✅ **Mod MVP:** the Writer and Reader entities, the registry, a name GUI,
+   and `hello`/`browse`/`snapshot`/`write`. Done; protocol in
+   `docs/protocol.md`, and the game-client checklist
+   (`docs/manual-test-checklist.md`) passed.
+3. ✅ **Bridge MVP:** RCON client, address space from browse, 10 Hz snapshot
+   polling, writable writer nodes. Done; see `docs/address-space.md`. The
+   UaExpert walkthrough is in `docs/manual-test-checklist.md`.
 4. **Deltas and dynamic model:** `opc_poll` deltas, model-change events,
    rename and remove handling, reconnect and resync, status codes.
 5. **Hardening:** security policies and users, config file, structured
