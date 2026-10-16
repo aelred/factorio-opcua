@@ -12,7 +12,12 @@ Decisions so far:
 | Data scope   | Circuit-network I/O (reader/writer entities) |
 | Hosting      | Factorio headless server with RCON          |
 | Bridge       | Python 3.11+ with `asyncua`                 |
-| Game version | Factorio 2.0 (Space Age optional; signals carry quality) — *assumed* |
+| Game version | Factorio 2.0 only (Space Age optional; signals carry quality) |
+| Update rate  | 10 Hz default, configurable (`poll_hz` in bridge config) |
+| Writes       | Level (latched) values only — no pulse/one-shot writes |
+| Servers      | One Factorio server per bridge instance |
+| Distribution | GitHub releases (mod zip + Python package), not the mod portal |
+| Licence      | *TBD* — see §7 |
 
 ---
 
@@ -96,10 +101,11 @@ multiplayer-safe.
   is one request at a time.
 - `model.py`: builds and syncs the OPC UA address space from browse results
   and `model_version`.
-- `server.py`: the asyncua server, the poll loop (default 10 Hz,
-  configurable), and the write handlers.
+- `server.py`: the asyncua server, the poll loop (`poll_hz`, default 10,
+  validated range 1–30), and the write handlers.
 - `config.py`: TOML config covering the RCON host, port and password, the
-  OPC endpoint, poll rate, security policy and users.
+  OPC endpoint, `poll_hz`, security policy and users. CLI flags and
+  environment variables override the file (for example `--poll-hz 5`).
 - CLI: `factorio-opc --config bridge.toml`.
 
 ### 3.2 OPC UA address space (namespace `urn:factorio-opc`)
@@ -155,28 +161,33 @@ docs/                  setup, address-space reference, protocol spec
 5. **Hardening:** security policies and users, config file, structured
    logging, metrics (`Status/*`), and a load test (for example 500 readers
    at 10 Hz) with a UPS-impact measurement.
-6. **Packaging:** mod zip for the Factorio mod portal, `pip install`able
-   bridge, Docker compose example, docs, and CI (busted, pytest, and an
+6. **Packaging:** mod zip attached to GitHub releases (installed by hand
+   into `mods/`), `pip install`able bridge, Docker compose example, docs, and CI (busted, pytest, and an
    optional headless e2e job).
 
 ## 6. Risks / to verify in spike
 - RCON reply size limits and multi-packet framing in Factorio.
   Mitigation: deltas, plus chunking with `/opc_poll` continuation.
-- RCON throughput, since commands run on the next tick. A 10–20 Hz poll rate
-  is realistic; 60 Hz probably isn't.
+- RCON throughput, since commands run on the next tick. The 10 Hz default
+  should be comfortable; the spike should find the practical ceiling so
+  `poll_hz` gets a sensible upper bound.
 - UPS cost of reading many circuit networks per poll. The mitigation is
   per-tick caching of `network_id` → signals so a shared network is read
   once.
 - Exact 2.0 API for the constant-combinator sections, and quality on
   signals.
 
-## 7. Open questions
-- Factorio 2.0 only, or also 1.1? (Assumed 2.0, which affects the
-  combinator and wire APIs.)
-- Is a 10 Hz default update rate enough, or do you need single-tick pulse
-  capture?
-- Should Writers support pulse/one-shot writes (set for N ticks, then
-  clear)?
-- Publish the mod on the official mod portal? Licence (MIT?).
-- Multiple Factorio servers behind one bridge (one namespace folder per
-  server)?
+## 7. Resolved scope / remaining question
+Resolved:
+- Factorio 2.0 only; no 1.1 compatibility layer.
+- 10 Hz default update rate, configurable. One-tick pulses may be missed and
+  that is accepted; no per-tick sampling mode.
+- Writers hold their values until changed again; no pulse writes.
+- One Factorio server per bridge; run a second bridge on another port for
+  another server.
+- Not published on the mod portal.
+
+Remaining: choose a licence. Candidates are MIT, Apache-2.0, MPL-2.0 or
+GPL-3.0. Note that the `asyncua` dependency is LGPL-3.0, which is compatible
+with all of these as an unmodified dependency, and that any sprites copied
+from the base game stay under Wube's terms rather than the repo licence.
