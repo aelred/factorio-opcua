@@ -1,7 +1,7 @@
 # factorio-opc
 
 Factorio 2.0 mod (`mod/opc-io`, Lua) and Python OPC UA bridge (`bridge/`, asyncua) talking over RCON.
-The RCON protocol is in docs/protocol.md, the OPC address space and performance figures in docs/address-space.md,
+The RCON protocol is in docs/protocol.md, the OPC address space in docs/address-space.md,
 security in docs/security.md, Docker in docs/docker.md and releases in docs/releasing.md.
 
 ## Working on it
