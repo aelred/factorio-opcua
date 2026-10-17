@@ -18,9 +18,9 @@ security in docs/security.md, Docker in docs/docker.md and releases in docs/rele
 - bridge/LICENSE is a copy of LICENSE (CI compares them).
 
 ## Manual checks
-When something needs checking by hand (GUI, graphics, blueprints, paste, or an OPC client), give the user steps in chat.
-- The user is on macOS and uses FreeOpcUa **opcua-client 1.0.1** (Python 3.14; not UaExpert; 1.0.2's right-click
-  Call crashes with a missing TreeWidget.get_parent_node). Write steps for its UI: Connect button → "Connect to server"
+When something needs checking by hand (GUI, graphics, blueprints, paste, or an OPC client), give steps in chat.
+- Write OPC client steps for FreeOpcUa **opcua-client 1.0.1**, the client the docs recommend (Python 3.14; 1.0.2's
+  right-click Call crashes with a missing TreeWidget.get_parent_node). Its UI: Connect button → "Connect to server"
   dialog (security mode radio, endpoint list, Anonymous/Username login), Disconnect button, "Subscribe to data
   change" → Subscriptions pane, Attributes pane to write a Value, right-click "Call" for methods, "Subscribe to
   events" on Objects/Server → Events pane (shows Message only).

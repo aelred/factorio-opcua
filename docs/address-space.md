@@ -99,7 +99,7 @@ browse, subscribe, write, and call methods, giving each argument its own
 field, so JSON with several signals works. To install and start it:
 ```sh
 uv tool install --python 3.14 "opcua-client==1.0.1"   # uv fetches Python 3.14 if needed
-# or, with Python 3.14 active (e.g. mise use -g python@3.14): python3 -m pip install "opcua-client==1.0.1"
+# or, with a Python 3.14 environment active: python3 -m pip install "opcua-client==1.0.1"
 opcua-client
 ```
 Use **1.0.1** for now:
