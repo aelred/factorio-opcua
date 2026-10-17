@@ -1,4 +1,6 @@
-"""Point FreeOpcUa opcua-client at a client certificate without its settings dialog.
+"""Point FreeOpcUa opcua-client 0.8.4 at a client certificate without its settings dialog.
+
+Only for 0.8.4: opcua-client 1.0.2+ (Python 3.14) creates its own certificate.
 
 opcua-client 0.8.4 crashes when its Settings -> Client Application Certificate
 dialog closes (NameError: name 'QDialog' is not defined), before it saves the

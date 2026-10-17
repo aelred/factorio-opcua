@@ -35,12 +35,29 @@ Last full pass: 2026-10-16, opc-io 0.2.0, all items passed.
 
 ## Using opcua-client
 
-Every client step in this checklist uses FreeOpcUa **`opcua-client`**
-(`pipx install opcua-client`, then run `opcua-client`), which works on
-macOS without an account. The terms below are its UI:
+Every client step in this checklist uses FreeOpcUa **`opcua-client` 1.0.2
+or newer**, which works on macOS without an account. To install it:
+```sh
+uv tool install --python 3.14 opcua-client   # uv fetches Python 3.14 if needed
+# or, with mise: mise install python@3.14 && pipx install --python "$(mise where python@3.14)/bin/python3" opcua-client
+opcua-client
+```
+Use **1.0.2 or newer**. Releases since 0.9.99 need Python 3.14, and on an
+older Python, pip quietly installs 0.8.4 (from 2022). That version has bugs
+that get in the way here: its certificate dialog crashes, and it can't use
+the Aes256 policy.
+
+The terms below are its UI:
 
 - **Connect:** enter `opc.tcp://127.0.0.1:4840/factorio-opc/` in the
-  address box and press **Connect**. No security or login is needed.
+  address box and press **Connect**. The **Connect to server** dialog
+  opens:
+  - Pick a security mode (**None**, **Sign** or **SignAndEncrypt**).
+  - Pick an endpoint from the list. Entries read like
+    `Basic256Sha256 | SignAndEncrypt | opc.tcp://...`.
+  - Pick a login: **Anonymous**, or **Username** with User and Password.
+  - Press **Connect**.
+  The defaults are None and Anonymous.
 - **Tree:** the browse tree on the left. Children load when you first
   expand a node and are then cached, so the tree doesn't show tags added or
   renamed later. To refresh it, press **Disconnect** then **Connect**.
@@ -95,15 +112,15 @@ over RCON.
 
 ## Security and metrics (milestone 5)
 
-Setup: make a password hash with `factorio-opc hash-password`, and a client
-certificate with `factorio-opc make-client-cert ~/uaclient-cert`, then run
-`python3 scripts/opcua-client-set-cert.py ~/uaclient-cert` with opcua-client
-closed. Don't use opcua-client's Client Application Certificate menu; it
-crashes in 0.8.4.
-The client certificate is for **opcua-client**, which can't make its own; the
-bridge doesn't need a copy. The bridge creates its own server certificate in
-`~/.factorio-opc/pki/` when it starts, and accepts any client certificate,
-using it only to encrypt; the login decides access. Then put
+Setup: make a password hash with `factorio-opc hash-password`.
+- **No client certificate needed:** opcua-client 1.0.2 creates its own on
+  the first encrypted connection.
+- **The bridge's certificate:** the bridge creates its own server
+  certificate in `~/.factorio-opc/pki/` when it starts.
+- **Access:** the bridge accepts any client certificate, using it only to
+  encrypt. The login decides what you can do.
+
+Then put
 this in a config file in the repo root (for example `secure.toml`;
 relative paths are resolved from the config file's folder) and run
 `factorio-opc --config secure.toml`:
@@ -122,13 +139,13 @@ role = "write"
 - [ ] Connecting with no login works, and values can be read and
       subscribed. Writing a writer signal's Value in the Attributes pane
       fails, and calling `SetSignals` fails with `BadUserAccessDenied`.
-- [ ] Connecting as `opc.tcp://operator:<password>@127.0.0.1:4840/factorio-opc/`
-      allows the write and the method call. A wrong password refuses the
-      connection.
-- [ ] Encrypted connection: follow "Connecting with opcua-client" in
-      `docs/security.md` (certificate set by the script, Query server
-      capability, SignAndEncrypt + Basic256Sha256). The connection works, and so do
-      writes as operator.
+- [ ] Connecting with **Username** `operator` and your password allows the
+      write and the method call. A wrong password refuses the connection.
+- [ ] Encrypted connection: in the Connect dialog choose
+      **SignAndEncrypt**, try both endpoints (Basic256Sha256 and
+      Aes256_Sha256_RsaPss), and log in as operator. On first use,
+      opcua-client may ask you to trust the bridge's certificate. The
+      connection works, and so do writes.
 - [ ] The bridge's log shows a line like
       `write press {"virtual/signal-A": 5} by operator` for each write.
       With `--log-format json`, the same line is JSON with `user` and

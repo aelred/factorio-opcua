@@ -15,11 +15,11 @@ Design and milestones are in PLAN.md, protocol in docs/protocol.md, and the OPC 
   and `api.PROTO` plus `game.PROTO` in the bridge when the RCON protocol changes.
 
 ## Manual checks (docs/manual-test-checklist.md)
-- The user is on macOS and tests with FreeOpcUa **opcua-client** (not UaExpert). Write all client steps for its UI:
-  Connect/Disconnect buttons, "Subscribe to data change" → Subscriptions pane, Attributes pane to write a Value,
+- The user is on macOS and tests with FreeOpcUa **opcua-client 1.0.2+** (Python 3.14; not UaExpert). Write all client
+  steps for its UI: Connect button → "Connect to server" dialog (security mode radio, endpoint list, Anonymous/Username
+  login), Disconnect button, "Subscribe to data change" → Subscriptions pane, Attributes pane to write a Value,
   right-click "Call" for methods, "Subscribe to events" on Objects/Server → Events pane (shows Message only).
 - opcua-client caches the tree and ignores model change events: refreshing means Disconnect then Connect.
-- opcua-client logins go in the URL (`opc.tcp://user:pw@host:4840/factorio-opc/`); encryption needs a client
-  certificate (`factorio-opc make-client-cert`, then `scripts/opcua-client-set-cert.py`, because opcua-client 0.8.4's
-  certificate dialog crashes) and the Basic256Sha256 policy (not Aes256_Sha256_RsaPss).
+- opcua-client 1.0.2 creates its own client certificate for encrypted endpoints; both policies work. (0.8.4, which
+  pip picks on Python < 3.14, needs make-client-cert + scripts/opcua-client-set-cert.py and Basic256Sha256 only.)
 - Things only a game client can check (GUI, graphics, blueprints, paste) go on that checklist too.

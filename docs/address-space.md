@@ -98,12 +98,18 @@ Linux and Windows, no sign-in) is the easiest client to recommend. It can
 browse, subscribe, write, and call methods, giving each argument its own
 field, so JSON with several signals works. To install and start it:
 ```sh
-pipx install opcua-client        # or: python3 -m venv ~/uaclient && ~/uaclient/bin/pip install opcua-client
+uv tool install --python 3.14 opcua-client   # uv fetches Python 3.14 if needed
+# or, with mise: mise install python@3.14 && pipx install --python "$(mise where python@3.14)/bin/python3" opcua-client
 opcua-client
 ```
+Use **1.0.2 or newer**. Releases since 0.9.99 need Python 3.14, and on an
+older Python, pip quietly installs 0.8.4 (from 2022). That version has bugs
+that get in the way here: its certificate dialog crashes, and it can't use
+the Aes256 policy.
+
 Connect to `opc.tcp://127.0.0.1:4840/factorio-opc/`, then right-click
-`SetSignals` and choose **Call**. Checked with opcua-client 0.8.4 and
-asyncua 2.1.0: its call dialog set two signals in one call against the
+`SetSignals` and choose **Call**. Checked with opcua-client 1.0.2 (and,
+earlier, 0.8.4): its call dialog set two signals in one call against the
 bridge.
 
 **asyncua's `uacall`** is installed alongside the bridge. Prefix the method
