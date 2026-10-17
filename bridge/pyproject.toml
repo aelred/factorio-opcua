@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "factorio-opc"
-version = "0.4.0"
+version = "0.5.0"
 description = "OPC UA server bridging Factorio circuit networks over RCON"
 license = "MIT"
 requires-python = ">=3.11"

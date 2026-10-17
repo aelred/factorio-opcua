@@ -3,17 +3,28 @@
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import dataclasses
+import ipaddress
 import json
 import logging
+import socket
 import time
 import uuid
 import warnings
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Callable
 from urllib.parse import urlparse
 
 from asyncua import Server, ua
+from asyncua.crypto import cert_gen
 from asyncua.crypto.permission_rules import User
+from cryptography import x509
+from cryptography.hazmat.primitives import serialization
+from cryptography.x509.oid import ExtendedKeyUsageOID
+
+from .auth import Ruleset, UserManager
 
 from .config import Config
 from .game import GameApi, GameError, Hello, RconGame
@@ -54,19 +65,93 @@ def signal_value(variant: ua.Variant | None) -> int | None:
     return value
 
 
+APPLICATION_URI = "urn:factorio-opc:bridge"
+
+# The user behind the method call being handled (asyncua doesn't pass it to methods).
+CALLING_USER: contextvars.ContextVar[User | None] = contextvars.ContextVar("calling_user", default=None)
+
+# opcua.security modes -> endpoints offered. Basic256Sha256 is what most clients
+# support; Aes256-Sha256-RsaPss is the current recommended profile.
+SECURITY_POLICIES = {
+    "none": [ua.SecurityPolicyType.NoSecurity],
+    "sign": [ua.SecurityPolicyType.Basic256Sha256_Sign, ua.SecurityPolicyType.Aes256Sha256RsaPss_Sign],
+    "sign_encrypt": [ua.SecurityPolicyType.Basic256Sha256_SignAndEncrypt,
+                     ua.SecurityPolicyType.Aes256Sha256RsaPss_SignAndEncrypt],
+}
+
+
+def _certificate_names(config: Config) -> tuple[list[str], list[str]]:
+    """DNS names and IP addresses the server certificate should cover."""
+    dns, ips = {socket.gethostname(), "localhost"}, {"127.0.0.1"}
+    host = urlparse(config.endpoint).hostname or ""
+    if host and host not in ("0.0.0.0", "::"):
+        try:
+            ipaddress.ip_address(host)
+            ips.add(host)
+        except ValueError:
+            dns.add(host)
+    return sorted(dns), sorted(ips)
+
+
+def _needs_new_certificate(cert_file: Path, dns: list[str], ips: list[str]) -> bool:
+    try:
+        cert = x509.load_der_x509_certificate(cert_file.read_bytes())
+        san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+    except (OSError, ValueError, x509.ExtensionNotFound):
+        return True
+    if cert.not_valid_after_utc - datetime.now(timezone.utc) < timedelta(days=7):
+        return True
+    have_ips = {str(i) for i in san.get_values_for_type(x509.IPAddress)}
+    return (APPLICATION_URI not in san.get_values_for_type(x509.UniformResourceIdentifier)
+            or not set(dns) <= set(san.get_values_for_type(x509.DNSName)) or not set(ips) <= have_ips)
+
+
+async def ensure_certificate(config: Config) -> tuple[Path, Path]:
+    """The configured certificate, or a self-signed one kept in pki_dir.
+
+    The self-signed certificate is created on first use and replaced when it is
+    about to expire or no longer covers this machine's names, so clients that
+    check host names (e.g. UaExpert) accept it.
+    """
+    if config.certificate and config.private_key:
+        return Path(config.certificate), Path(config.private_key)
+    pki = Path(config.pki_dir).expanduser()
+    pki.mkdir(parents=True, exist_ok=True)
+    cert_file, key_file = pki / "server_cert.der", pki / "server_key.pem"
+    dns, ips = _certificate_names(config)
+    if not key_file.is_file():
+        key_file.write_bytes(cert_gen.dump_private_key_as_pem(cert_gen.generate_private_key()))
+        cert_file.unlink(missing_ok=True)
+    key_file.chmod(0o600)
+    if _needs_new_certificate(cert_file, dns, ips):
+        key = await cert_gen.load_private_key(key_file)
+        names = [x509.UniformResourceIdentifier(APPLICATION_URI)] + [x509.DNSName(d) for d in dns] + [
+            x509.IPAddress(ipaddress.ip_address(i)) for i in ips]
+        cert = cert_gen.generate_self_signed_app_certificate(
+            key, "factorio-opc bridge", {"organizationName": "factorio-opc"}, names,
+            extended=[ExtendedKeyUsageOID.SERVER_AUTH, ExtendedKeyUsageOID.CLIENT_AUTH], days=365)
+        cert_file.write_bytes(cert.public_bytes(serialization.Encoding.DER))
+        log.info("created self-signed OPC UA server certificate %s for %s", cert_file, ", ".join(dns + ips))
+    return cert_file, key_file
+
+
 class Bridge:
     def __init__(self, config: Config, game_factory: Callable[[], GameApi] | None = None) -> None:
         self.config = config
         self._game_factory = game_factory or (
             lambda: RconGame(config.rcon_host, config.rcon_port, config.rcon_password, config.rcon_timeout)
         )
-        self.server = Server()
+        self.server = Server(user_manager=UserManager(config))
         self.model: AddressSpace | None = None
         self.game: GameApi | None = None  # set while connected
         self.connected = asyncio.Event()  # set once tags are synced, cleared on disconnect
         self._model_version: int | None = None
         self._task: asyncio.Task | None = None
         self._original_write = None
+        # Counters published under Status/ (see AddressSpace.set_metrics).
+        self.metrics: dict = {"Polls": 0, "LatePolls": 0, "Reconnects": 0, "Writes": 0, "WriteErrors": 0,
+                              "ConnectedSince": None}
+        self._ever_connected = False
 
     # -- lifecycle -------------------------------------------------------------
 
@@ -74,21 +159,37 @@ class Bridge:
         await self.server.init()
         self.server.set_endpoint(self.config.endpoint)
         self.server.set_server_name(self.config.server_name)
-        await self.server.set_application_uri("urn:factorio-opc:bridge")
-        self.server.set_security_policy([ua.SecurityPolicyType.NoSecurity])
+        await self.server.set_application_uri(APPLICATION_URI)
+        await self._setup_security()
         # Never grant the admin role (which skips access-level checks) to remote users.
         self.server.iserver.allow_remote_admin = False
         ns = await self.server.register_namespace(NAMESPACE_URI)
         self.model = AddressSpace(self.server, ns)
         await self.model.build()
         self._install_write_hook()
-        host = urlparse(self.config.endpoint).hostname or ""
-        if host not in ("127.0.0.1", "localhost", "::1"):
-            log.warning("OPC UA endpoint %s is reachable from the network without security or login "
-                        "(security arrives in milestone 5)", self.config.endpoint)
         await self.server.start()
-        log.info("OPC UA server listening on %s", self.config.endpoint)
+        log.info("OPC UA server listening on %s (security: %s; anonymous: %s; %d user(s))", self.config.endpoint,
+                 ", ".join(self.config.security), self.config.anonymous, len(self.config.users))
         self._task = asyncio.create_task(self._run_game(), name="factorio-game")
+
+    async def _setup_security(self) -> None:
+        config = self.config
+        policies = [policy for mode in config.security for policy in SECURITY_POLICIES[mode]]
+        if any(mode != "none" for mode in config.security):
+            cert, key = await ensure_certificate(config)
+            await self.server.load_certificate(str(cert))
+            await self.server.load_private_key(str(key))
+        self.server.set_security_policy(policies, permission_ruleset=Ruleset())
+        tokens = []
+        if config.anonymous != "none":
+            tokens.append(ua.AnonymousIdentityToken)
+        if config.users:
+            tokens.append(ua.UserNameIdentityToken)
+        self.server.set_identity_tokens(tokens)
+        if config.allow_insecure and not config.endpoint_is_local and "none" in config.security \
+                and config.anonymous != "none":
+            log.warning("allow_insecure: anyone who can reach %s gets %s access without encryption",
+                        config.endpoint, config.anonymous)
 
     async def stop(self) -> None:
         if self._task is not None:
@@ -129,6 +230,10 @@ class Bridge:
                 log.info("connected to Factorio %s (opc-io %s) at %s", hello.factorio_version, hello.mod_version, rcon)
                 self.game = game
                 self._model_version = None
+                if self._ever_connected:
+                    self.metrics["Reconnects"] += 1
+                self._ever_connected = True
+                self.metrics["ConnectedSince"] = now()
                 await self.model.set_connected(hello)
                 backoff = BACKOFF_START
                 await self._poll(game, hello)
@@ -177,6 +282,8 @@ class Bridge:
                                         model_version=poll.model_version)
             await self.model.set_status(hello, latency_ms)
             await self.model.emit_model_changes()
+            self.metrics["Polls"] += 1
+            await self.model.set_metrics(self.metrics)
             # Only after the first full sync, so every tag's nodes exist once this is set.
             self.connected.set()
             next_at += interval
@@ -184,6 +291,7 @@ class Bridge:
             if delay > 0:
                 await asyncio.sleep(delay)
             else:
+                self.metrics["LatePolls"] += 1
                 next_at = loop.time()  # running late: skip ahead instead of bursting
 
     # -- writes from OPC clients -------------------------------------------------
@@ -192,6 +300,27 @@ class Bridge:
         service = self.server.iserver.attribute_service
         self._original_write = service.write
         service.write = self._write
+
+        # Record who is calling each method, for the audit log. Wraps the
+        # sessions of this server only.
+        iserver = self.server.iserver
+        create_session = iserver.create_session
+
+        def create_tracked_session(*args, **kwargs):
+            session = create_session(*args, **kwargs)
+            call = session.call
+
+            async def tracked_call(params):
+                token = CALLING_USER.set(session.user)
+                try:
+                    return await call(params)
+                finally:
+                    CALLING_USER.reset(token)
+
+            session.call = tracked_call
+            return session
+
+        iserver.create_session = create_tracked_session
 
     async def _write(self, params: ua.WriteParameters, user: User = User()) -> list[ua.StatusCode]:
         """Intercepts session writes: writer signal nodes go to the game, the rest to asyncua."""
@@ -220,31 +349,41 @@ class Bridge:
                 results[i] = result
 
         for tag, items in by_tag.items():
-            code = await self._write_tag(tag, {key: value for _, key, value in items})
+            code = await self._write_tag(tag, {key: value for _, key, value in items}, user)
             for i, _, _ in items:
                 results[i] = status(code)
         return results  # type: ignore[return-value]
 
-    async def _game_write(self, tag: str, signals: dict[str, int], mode: str) -> dict[str, int]:
-        """Write through to the game and update the writer's nodes from its reply."""
+    async def _game_write(self, tag: str, signals: dict[str, int], mode: str, user: User | None,
+                          via: str) -> dict[str, int]:
+        """Write through to the game, update the writer's nodes from its reply, and audit-log it."""
         assert self.model is not None
+        audit = {"tag": tag, "signals": signals, "mode": mode, "via": via,
+                 "user": getattr(user, "name", None) or "anonymous"}
         game = self.game
         if game is None:
+            self.metrics["WriteErrors"] += 1
+            log.warning("write to %s refused: not connected to the game", tag, extra={**audit, "result": "offline"})
             raise ua.UaStatusCodeError(ua.StatusCodes.BadNoCommunication)
         try:
             result = await game.write(tag, signals, mode)
         except GameError as exc:
-            log.warning("write to %s rejected by the game: %s", tag, exc)
+            self.metrics["WriteErrors"] += 1
+            log.warning("write to %s rejected by the game: %s", tag, exc, extra={**audit, "result": "rejected"})
             raise ua.UaStatusCodeError(ua.StatusCodes.BadInvalidArgument) from exc
         except (RconError, OSError, asyncio.TimeoutError) as exc:
-            log.warning("write to %s failed: %s", tag, exc)
+            self.metrics["WriteErrors"] += 1
+            log.warning("write to %s failed: %s", tag, exc, extra={**audit, "result": "failed"})
             raise ua.UaStatusCodeError(ua.StatusCodes.BadCommunicationError) from exc
+        self.metrics["Writes"] += 1
+        log.info("write %s %s by %s", tag, json.dumps(signals, sort_keys=True), audit["user"],
+                 extra={**audit, "result": "ok"})
         await self.model.apply_writer(tag, result)
         return result
 
-    async def _write_tag(self, tag: str, signals: dict[str, int]) -> int:
+    async def _write_tag(self, tag: str, signals: dict[str, int], user: User | None) -> int:
         try:
-            await self._game_write(tag, signals, "merge")
+            await self._game_write(tag, signals, "merge", user, "write")
         except ua.UaStatusCodeError as exc:
             return exc.code
         return ua.StatusCodes.Good
@@ -259,5 +398,5 @@ class Bridge:
             raise ua.UaStatusCodeError(ua.StatusCodes.BadInvalidArgument) from None
         if not isinstance(signals, dict):
             raise ua.UaStatusCodeError(ua.StatusCodes.BadInvalidArgument)
-        result = await self._game_write(tag, signals, mode)
+        result = await self._game_write(tag, signals, mode, CALLING_USER.get(), "method")
         return json.dumps(result, sort_keys=True)

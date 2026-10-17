@@ -9,11 +9,25 @@ rcon_password_file = "../.dev/factorio/config/rconpw"
 rcon_timeout = 5.0
 
 [opcua]
-# No security or login yet (milestone 5), so keep this on localhost unless
-# the network is trusted. Use opc.tcp://0.0.0.0:4840/factorio-opc/ to listen on all interfaces.
+# Localhost only. Use opc.tcp://0.0.0.0:4840/factorio-opc/ to listen on all
+# interfaces, and then also tighten security below (see docs/security.md).
 endpoint = "opc.tcp://127.0.0.1:4840/factorio-opc/"
 server_name = "Factorio OPC UA"
+# Endpoint modes offered: none, sign, sign_encrypt. Secure modes use a
+# self-signed certificate created in pki_dir (or set certificate/private_key).
+security = ["none", "sign_encrypt"]
+pki_dir = "~/.factorio-opc/pki"
+# Access without a login: none, read or write.
+anonymous = "write"
+
+# Logins. Make a hash with: factorio-opc hash-password
+# [[opcua.users]]
+# name = "operator"
+# password_hash = "scrypt$..."
+# role = "write"     # or "read"
 
 [bridge]
 # Game polls per second, 1-30. RCON round-trips take one tick (~16.7 ms).
 poll_hz = 10
+# text, or json for one JSON object per line (log collectors)
+log_format = "text"

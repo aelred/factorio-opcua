@@ -34,7 +34,7 @@ async def test_opc_write_reaches_reader_through_the_game(factorio, rcon):
     await factorio.lua(f'return remote.call("opc-io", "rename", "{(await factorio.tag_by_unit(reader))["name"]}", "e2e_r")')
 
     config = Config(rcon_host=rcon.host, rcon_port=rcon.port, rcon_password=rcon._password,
-                    endpoint=f"opc.tcp://127.0.0.1:{free_port()}/factorio-opc/", poll_hz=10)
+                    endpoint=f"opc.tcp://127.0.0.1:{free_port()}/factorio-opc/", poll_hz=10, security=["none"])
     async with Bridge(config) as bridge:
         await asyncio.wait_for(bridge.connected.wait(), 10)
         client = Client(config.endpoint, timeout=5)
@@ -84,7 +84,7 @@ async def test_rename_in_game_moves_nodes_and_emits_model_change(factorio, rcon)
     await factorio.command("opc_write", {"tag": old, "signals": {"virtual/signal-R": 9}})
 
     config = Config(rcon_host=rcon.host, rcon_port=rcon.port, rcon_password=rcon._password,
-                    endpoint=f"opc.tcp://127.0.0.1:{free_port()}/factorio-opc/", poll_hz=10)
+                    endpoint=f"opc.tcp://127.0.0.1:{free_port()}/factorio-opc/", poll_hz=10, security=["none"])
     async with Bridge(config) as bridge:
         await asyncio.wait_for(bridge.connected.wait(), 10)
         client = Client(config.endpoint, timeout=5)

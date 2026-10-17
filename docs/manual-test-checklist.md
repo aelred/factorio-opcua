@@ -92,3 +92,44 @@ over RCON.
       game: one event appears in the Events pane, with a Message like
       `Added Writers/writer-12`. Renaming a tag gives
       `Added Writers/<new>; removed Writers/<old>`.
+
+## Security and metrics (milestone 5)
+
+Setup: make a password hash with `factorio-opc hash-password`, and a client
+certificate with `factorio-opc make-client-cert ~/uaclient-cert`. Then put
+this in a config file in the repo root (for example `secure.toml`;
+relative paths are resolved from the config file's folder) and run
+`factorio-opc --config secure.toml`:
+```toml
+[factorio]
+rcon_password_file = ".dev/factorio/config/rconpw"   # adjust to your setup
+[opcua]
+security = ["none", "sign_encrypt"]
+anonymous = "read"
+[[opcua.users]]
+name = "operator"
+password_hash = "scrypt$..."   # your hash
+role = "write"
+```
+
+- [ ] Connecting with no login works, and values can be read and
+      subscribed. Writing a writer signal's Value in the Attributes pane
+      fails, and calling `SetSignals` fails with `BadUserAccessDenied`.
+- [ ] Connecting as `opc.tcp://operator:<password>@127.0.0.1:4840/factorio-opc/`
+      allows the write and the method call. A wrong password refuses the
+      connection.
+- [ ] Encrypted connection: follow "Connecting with opcua-client" in
+      `docs/security.md` (client certificate, Query server capability,
+      SignAndEncrypt + Basic256Sha256). The connection works, and so do
+      writes as operator.
+- [ ] The bridge's log shows a line like
+      `write press {"virtual/signal-A": 5} by operator` for each write.
+      With `--log-format json`, the same line is JSON with `user` and
+      `result` fields.
+- [ ] Under `Objects/Factorio/Status`, the new counters move as you'd
+      expect: Polls rises steadily, Writes and WriteErrors count your
+      writes, Tags and SignalNodes match the tree, and Reconnects
+      increases after you stop and start the Factorio server.
+- [ ] Setting the endpoint to `opc.tcp://0.0.0.0:4840/factorio-opc/` in
+      that config, with `security` still including "none", makes the
+      bridge refuse to start and explain why.

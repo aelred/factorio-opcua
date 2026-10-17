@@ -94,3 +94,51 @@ At this size a full read takes longer than one tick to build and encode,
 and a quiet delta does not. Deltas still read every network in Lua; the
 saving is in diffing instead of encoding and sending. The UPS impact of
 reading many networks is still measured in milestone 5.
+
+## Milestone 5: load test (`spike/load_test.py`)
+
+Measured on 2026-10-17 on the dev server (4 cores, shared by the game, the
+bridge and its OPC stack), with 5 signals per writer and the bridge at
+10 Hz. Two layouts:
+- **pairs:** each writer wired to its own reader, so N separate networks.
+- **shared:** one writer and N readers on one network.
+
+**Mod cost per poll**, timed with Factorio's own profiler. A full read
+happens on every poll:
+
+| Layout | Readers | Before M5 | After M5 | Share of 60 UPS budget at 10 Hz |
+|---|---|---|---|---|
+| pairs | 100 | — | 1.9 ms | 1.9% |
+| pairs | 500 | 18.3 ms | 10.7 ms | 10.7% |
+| shared | 100 | 1.3 ms | 0.7 ms | 0.7% |
+| shared | 500 | 8.7 ms | 3.3 ms | 3.3% |
+
+**Optimizations** made in M5:
+- the sorted tag list is cached until tags change;
+- writer outputs are cached in `storage` and audited round-robin (1/20 of
+  the writers per poll);
+- each circuit network is read once per poll however many readers share it;
+- signal key strings are memoized.
+
+Writers went from 6.8 ms to 0.25 ms for 500.
+
+**What's left:** reading a network costs about 7 µs per reader in engine
+calls. `get_circuit_network` and `get_signals` measured the same. So 500
+separately wired readers still take about 10 ms. That cost lands on every
+6th tick at 10 Hz, which can cause a visible hitch on a busy server.
+
+**Advice:**
+- Keep `poll_hz` low for large setups.
+- Group readers on shared networks where possible.
+- The option left if needed is spreading reads over several ticks.
+
+**Max-UPS test.** The game ran at `game.speed = 1000`, and ticks per second
+were compared with and without the bridge. The figures also include the
+bridge's own CPU use on the same 4 cores, so they're an upper bound:
+
+| Layout | Readers | Max UPS idle | Max UPS with bridge | Cost |
+|---|---|---|---|---|
+| pairs | 100 | 3141 | 3029 | 3.6% |
+| pairs | 500 | 2718 | 2160 | 20.5% |
+| shared | 100 | 3089 | 3021 | 2.2% |
+| shared | 500 | 3198 | 2933 | 8.3% |

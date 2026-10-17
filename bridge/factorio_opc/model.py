@@ -2,7 +2,8 @@
 
 Objects/Factorio/
   Status/   Connected, GameTick, TickPaused, GameSpeed, ModVersion, FactorioVersion,
-            ModelVersion, LastPollLatencyMs
+            ModelVersion, LastPollLatencyMs, and bridge metrics (Polls, LatePolls,
+            Reconnects, Writes, WriteErrors, Tags, SignalNodes, ConnectedSince)
   Readers/<tag>/  Red/<signal>, Green/<signal>, Total/<signal>  (Int32, read-only)
   Writers/<tag>/  Signals/<signal> (Int32, writable), SetSignals(), ClearAll()
 
@@ -102,6 +103,7 @@ class AddressSpace:
         self._readers: dict[str, tuple[SignalMap, SignalMap]] = {}
         self._writers: dict[str, SignalMap] = {}
         self._pending_changes: list[ua.ModelChangeStructureDataType] = []
+        self._metric_cache: dict[str, object] = {}
         self._change_generators: list = []
 
     def nodeid(self, path: str) -> ua.NodeId:
@@ -123,6 +125,15 @@ class AddressSpace:
             ("FactorioVersion", "", ua.VariantType.String),
             ("ModelVersion", 0, ua.VariantType.UInt32),
             ("LastPollLatencyMs", 0.0, ua.VariantType.Double),
+            # Bridge metrics, see set_metrics.
+            ("Polls", 0, ua.VariantType.UInt64),
+            ("LatePolls", 0, ua.VariantType.UInt64),
+            ("Reconnects", 0, ua.VariantType.UInt32),
+            ("Writes", 0, ua.VariantType.UInt64),
+            ("WriteErrors", 0, ua.VariantType.UInt64),
+            ("Tags", 0, ua.VariantType.UInt32),
+            ("SignalNodes", 0, ua.VariantType.UInt32),
+            ("ConnectedSince", None, ua.VariantType.DateTime),
         ):
             self._status[name] = await status.add_variable(
                 self.nodeid(f"Status/{name}"), self.qname(name), value, vtype
@@ -162,6 +173,22 @@ class AddressSpace:
             await self._push(self._status[name], ua.Variant(value, vtype))
         if latency_ms is not None:
             await self._push(self._status["LastPollLatencyMs"], ua.Variant(latency_ms, ua.VariantType.Double))
+
+    METRIC_TYPES = {
+        "Polls": ua.VariantType.UInt64, "LatePolls": ua.VariantType.UInt64, "Reconnects": ua.VariantType.UInt32,
+        "Writes": ua.VariantType.UInt64, "WriteErrors": ua.VariantType.UInt64, "ConnectedSince": ua.VariantType.DateTime,
+    }
+
+    async def set_metrics(self, metrics: dict) -> None:
+        """Push bridge counters (see METRIC_TYPES) plus the current tag and signal-node counts."""
+        values = dict(metrics)
+        values["Tags"] = len(self.tags)
+        values["SignalNodes"] = sum(len(t.signals) for t in self.tags.values())
+        types = {**self.METRIC_TYPES, "Tags": ua.VariantType.UInt32, "SignalNodes": ua.VariantType.UInt32}
+        for name, value in values.items():
+            if name in types and self._metric_cache.get(name) != value:
+                self._metric_cache[name] = value
+                await self._push(self._status[name], ua.Variant(value, types[name]))
 
     # -- tags ----------------------------------------------------------------
 

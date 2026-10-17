@@ -48,7 +48,8 @@ def world():
 async def bridge(world, monkeypatch):
     monkeypatch.setattr(server_module, "BACKOFF_START", 0.05)
     monkeypatch.setattr(server_module, "BACKOFF_MAX", 0.1)
-    config = Config(rcon_password="x", endpoint=f"opc.tcp://127.0.0.1:{free_port()}/factorio-opc/", poll_hz=30)
+    config = Config(rcon_password="x", endpoint=f"opc.tcp://127.0.0.1:{free_port()}/factorio-opc/", poll_hz=30,
+                    security=["none"])
     b = Bridge(config, game_factory=lambda: FakeGame(world))
     await b.start()
     await asyncio.wait_for(b.connected.wait(), 3)
@@ -275,18 +276,13 @@ async def test_non_signal_writes_pass_through(client):
         await node(client, "Status/GameTick").write_value(ua.DataValue(ua.Variant(1, ua.VariantType.UInt64)))
 
 
-async def test_admin_username_does_not_bypass_access_levels(bridge):
+async def test_unconfigured_user_names_are_refused(bridge):
+    # Including "admin", which asyncua would otherwise grant the Admin role.
     c = Client(bridge.config.endpoint, timeout=5)
     c.set_user("admin")
     c.set_password("anything")
-    await c.connect()
-    try:
-        ns = await c.get_namespace_index(NS)
-        target = c.get_node(ua.NodeId("Status/GameTick", ns))
-        with pytest.raises(ua.UaStatusCodeError):
-            await target.write_value(ua.DataValue(ua.Variant(1, ua.VariantType.UInt64)))
-    finally:
-        await c.disconnect()
+    with pytest.raises(ua.UaStatusCodeError):
+        await c.connect()
 
 
 async def test_first_poll_is_full_then_deltas(client, world):
@@ -394,3 +390,62 @@ async def test_rename_moves_values_to_new_nodes(client, world):
             await value(client, "Writers/press/Signals/virtual/signal-B")
 
     await eventually(moved)
+
+
+async def test_metrics(client, world):
+    target = node(client, "Writers/press/Signals/virtual/signal-B")
+    await eventually(lambda: target.read_value())
+    await target.write_value(ua.DataValue(ua.Variant(5, ua.VariantType.Int32)))
+    world.reject_writes = "nope"
+    with pytest.raises(ua.UaStatusCodeError):
+        await target.write_value(ua.DataValue(ua.Variant(6, ua.VariantType.Int32)))
+    world.reject_writes = None
+
+    async def counted():
+        assert await value(client, "Status/Polls") > 1
+        assert await value(client, "Status/Writes") == 1
+        assert await value(client, "Status/WriteErrors") == 1
+        assert await value(client, "Status/Tags") == 2
+        assert await value(client, "Status/SignalNodes") >= 7  # 2 reader signals x 3 channels + 1 writer signal
+        assert await value(client, "Status/ConnectedSince") is not None
+        assert await value(client, "Status/Reconnects") == 0
+
+    await eventually(counted)
+    world.reachable = False
+    await eventually(lambda: _assert_value(client, "Status/Connected", False))
+    world.reachable = True
+
+    async def reconnected():
+        assert await value(client, "Status/Reconnects") == 1
+
+    await eventually(reconnected)
+
+
+async def _assert_value(client, path, expected):
+    assert await value(client, path) == expected
+
+
+async def test_writes_are_audit_logged(client, world, caplog):
+    target = node(client, "Writers/press/Signals/virtual/signal-B")
+    await eventually(lambda: target.read_value())
+    with caplog.at_level("INFO", logger="factorio_opc"):
+        await target.write_value(ua.DataValue(ua.Variant(9, ua.VariantType.Int32)))
+        await node(client, "Writers/press").call_method(ua.NodeId("Writers/press/SetSignals", client.ns),
+                                                       '{"item/iron-plate": 2}')
+    audits = [r for r in caplog.records if getattr(r, "tag", None) == "press"]
+    assert [(r.via, r.result, r.user, r.signals) for r in audits] == [
+        ("write", "ok", "anonymous", {"virtual/signal-B": 9}),
+        ("method", "ok", "anonymous", {"item/iron-plate": 2}),
+    ]
+
+
+def test_json_log_format():
+    import logging
+
+    from factorio_opc.logs import JsonFormatter
+
+    record = logging.LogRecord("factorio_opc", logging.INFO, __file__, 1, "write %s", ("press",), None)
+    record.tag, record.user = "press", "alice"
+    entry = json.loads(JsonFormatter().format(record))
+    assert entry["message"] == "write press" and entry["level"] == "INFO"
+    assert entry["tag"] == "press" and entry["user"] == "alice" and "time" in entry

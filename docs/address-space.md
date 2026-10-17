@@ -1,7 +1,7 @@
 # OPC UA address space
 
-Endpoint (default): `opc.tcp://127.0.0.1:4840/factorio-opc/`, no security,
-anonymous login. Security and users arrive in milestone 5.
+Endpoint (default): `opc.tcp://127.0.0.1:4840/factorio-opc/`. Encryption,
+logins and read-only users are described in [security.md](security.md).
 
 Everything lives in the namespace **`urn:factorio-opc`**. Look up its index
 at runtime; it is usually 2. NodeIds are strings that spell out the path,
@@ -19,6 +19,14 @@ Objects/Factorio/
     FactorioVersion    String
     ModelVersion       UInt32    changes when tags are added, removed or renamed
     LastPollLatencyMs  Double    round-trip of the last poll
+    Polls              UInt64    polls completed since the bridge started
+    LatePolls          UInt64    polls that started late (the game or RCON couldn't keep up with poll_hz)
+    Reconnects         UInt32    times the bridge reconnected to the game
+    Writes             UInt64    writes accepted by the game (values and methods)
+    WriteErrors        UInt64    writes refused or failed
+    Tags               UInt32    reader and writer tags currently published
+    SignalNodes        UInt32    signal variables currently published
+    ConnectedSince     DateTime  start of the current game connection
   Readers/
     <tag>/
       Red/<signal>     Int32  read-only
@@ -75,7 +83,8 @@ same strings.
 | `BadInvalidArgument` | Rejected by the game (logged by the bridge), or bad method arguments |
 | `BadNoCommunication` | Not connected to the game |
 | `BadCommunicationError` | The connection failed during the write |
-| `BadUserAccessDenied` / `BadNotWritable` | Tried to write a read-only node |
+| `BadUserAccessDenied` | A read-only user or anonymous client tried to write or call a method |
+| `BadNotWritable` | Tried to write a read-only node |
 
 `SetSignals` and `ClearAll` return the same codes as the call result, plus
 `BadArgumentsMissing`, `BadTooManyArguments` or `BadTypeMismatch` for wrong

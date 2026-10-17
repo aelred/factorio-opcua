@@ -56,7 +56,7 @@ function gui.open(player, entry)
   frame.add({ type = "line" })
   if entry.kind == "writer" then
     frame.add({ type = "label", caption = { "opc-io.signals-written" }, style = "caption_label" })
-    frame.add({ type = "label", caption = signal_text(registry.writer_values(entry.entity)) }).style.single_line = false
+    frame.add({ type = "label", caption = signal_text(registry.read_writer(entry.entity)) }).style.single_line = false
   else
     network_section(frame, entry.entity, defines.wire_connector_id.circuit_red, "opc-io.signals-red")
     network_section(frame, entry.entity, defines.wire_connector_id.circuit_green, "opc-io.signals-green")

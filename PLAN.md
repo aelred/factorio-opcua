@@ -173,9 +173,18 @@ docs/                  setup, address-space reference, protocol spec
    polls once per cycle, removed tags send `BadNodeIdUnknown`, and
    GeneralModelChangeEvents are emitted. Measured in
    `docs/spike-results.md`.
-5. **Hardening:** security policies and users, config file, structured
+5. ✅ **Hardening:** security policies and users, config file, structured
    logging, metrics (`Status/*`), and a load test (for example 500 readers
-   at 10 Hz) with a UPS-impact measurement.
+   at 10 Hz) with a UPS-impact measurement. Done:
+   - security: `docs/security.md`, with users, read/write roles and a
+     self-signed certificate;
+   - logging: JSON logs and a write audit log;
+   - metrics: eight new `Status/` values;
+   - load test: `docs/spike-results.md`. Optimizing the mod cut a 500-pair
+     poll from 18 ms to 11 ms.
+
+   Spreading reads over several ticks is left as an option if large setups
+   need it.
 6. **Packaging:** mod zip attached to GitHub releases (installed by hand
    into `mods/`), `pip install`able bridge, Docker compose example, docs, and CI (busted, pytest, and an
    optional headless e2e job).

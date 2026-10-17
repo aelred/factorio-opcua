@@ -24,10 +24,29 @@ signals.PROTOTYPE_COLLECTIONS = {
   ["quality"] = "quality",
 }
 
+-- type -> name -> quality -> key. A pure memo (same result with or without it)
+-- that saves building the same strings on every poll.
+local key_cache = {}
+
 function signals.key(id)
-  local key = (id.type or "item") .. "/" .. id.name
-  if id.quality and id.quality ~= "normal" then
-    key = key .. "/" .. id.quality
+  local t, name, quality = id.type or "item", id.name, id.quality or "normal"
+  local by_name = key_cache[t]
+  if not by_name then
+    by_name = {}
+    key_cache[t] = by_name
+  end
+  local by_quality = by_name[name]
+  if not by_quality then
+    by_quality = {}
+    by_name[name] = by_quality
+  end
+  local key = by_quality[quality]
+  if not key then
+    key = t .. "/" .. name
+    if quality ~= "normal" then
+      key = key .. "/" .. quality
+    end
+    by_quality[quality] = key
   end
   return key
 end

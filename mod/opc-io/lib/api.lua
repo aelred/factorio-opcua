@@ -26,7 +26,9 @@ local function rcon_only(handler)
       return
     end
     local ok, result = pcall(handler, cmd)
-    if ok then
+    if ok and result == nil then
+      return -- the handler printed its own reply (spike profiling)
+    elseif ok then
       result.ok = true
       reply(result)
     elseif type(result) == "table" and result.opc_error then
@@ -54,6 +56,46 @@ local function network_values(entity, wire)
   return signals.from_network(network and network.signals)
 end
 
+-- Writers re-read per poll to catch changes made outside the mod: 1/20 of
+-- them, so all are checked about every 2 seconds at 10 polls per second.
+local AUDIT_FRACTION = 20
+
+local function read_all()
+  local readers, writers = {}, {}
+  local writer_count = 0
+  -- network_id -> values, so a network shared by many readers is read once.
+  local networks = {}
+  local function read(entity, wire)
+    local network = entity.get_circuit_network(wire)
+    if not network then
+      return {}
+    end
+    local values = networks[network.network_id]
+    if not values then
+      values = signals.from_network(network.signals)
+      networks[network.network_id] = values
+    end
+    return registry.copy(values) -- each reader gets its own table in storage
+  end
+  for _, entry in ipairs(registry.entries()) do
+    if entry.entity.valid then
+      if entry.kind == "reader" then
+        readers[entry.name] = {
+          red = read(entry.entity, defines.wire_connector_id.circuit_red),
+          green = read(entry.entity, defines.wire_connector_id.circuit_green),
+        }
+      else
+        writers[entry.name] = registry.copy(registry.writer_values(entry))
+        writer_count = writer_count + 1
+      end
+    end
+  end
+  if writer_count > 0 then
+    registry.audit_writers(math.ceil(writer_count / AUDIT_FRACTION))
+  end
+  return { readers = readers, writers = writers }
+end
+
 local handlers = {}
 
 function handlers.opc_hello()
@@ -72,6 +114,9 @@ function handlers.opc_browse()
   local tags = {}
   for _, entry in ipairs(registry.entries()) do
     local e = entry.entity
+    if not e.valid then
+      goto continue
+    end
     tags[#tags + 1] = {
       name = entry.name,
       kind = entry.kind,
@@ -79,23 +124,9 @@ function handlers.opc_browse()
       surface = e.surface.name,
       position = { x = e.position.x, y = e.position.y },
     }
+    ::continue::
   end
   return { tick = game.tick, model_version = registry.model_version(), tags = tags }
-end
-
-local function read_all()
-  local readers, writers = {}, {}
-  for _, entry in ipairs(registry.entries()) do
-    if entry.kind == "reader" then
-      readers[entry.name] = {
-        red = network_values(entry.entity, defines.wire_connector_id.circuit_red),
-        green = network_values(entry.entity, defines.wire_connector_id.circuit_green),
-      }
-    else
-      writers[entry.name] = registry.writer_values(entry.entity)
-    end
-  end
-  return { readers = readers, writers = writers }
 end
 
 function handlers.opc_snapshot()
@@ -142,7 +173,7 @@ function handlers.opc_write(cmd)
   if not updates then
     fail(err)
   end
-  local values = signals.apply(registry.writer_values(entry.entity), updates, mode)
+  local values = signals.apply(registry.writer_values(entry), updates, mode)
   local count = 0
   for _ in pairs(values) do
     count = count + 1
@@ -150,7 +181,7 @@ function handlers.opc_write(cmd)
   if count > signals.MAX_SIGNALS_PER_WRITE then
     fail("writer would hold more than " .. signals.MAX_SIGNALS_PER_WRITE .. " signals")
   end
-  registry.set_writer_values(entry.entity, values)
+  registry.set_writer_values(entry, values)
   return { tick = game.tick, tag = tag, signals = values }
 end
 
@@ -158,6 +189,61 @@ end
 function handlers.opc_spike_payload(cmd)
   local n = math.floor(tonumber(cmd.parameter) or 0)
   return { payload = string.rep("x", n) }
+end
+
+-- Load-test helper: average time of the poll path over N runs, from Factorio's
+-- profiler. Replies with plain text (profiler values can only be printed), e.g.
+-- "read_all Duration: 1.2ms | poll Duration: 1.3ms | readers 500 writers 500".
+function handlers.opc_spike_profile(cmd)
+  local n = math.max(1, math.floor(tonumber(cmd.parameter) or 10))
+  local values
+  local p_read = game.create_profiler()
+  for _ = 1, n do
+    values = read_all()
+  end
+  p_read.stop()
+  p_read.divide(n)
+
+  -- A full poll cycle as the bridge sees it once values are steady:
+  -- read, diff against the previous reply, encode the (empty) delta.
+  local sessions = {}
+  poll.step(sessions, "profile", nil, false, read_all(), game.tick)
+  local bytes = 0
+  local p_poll = game.create_profiler()
+  for i = 1, n do
+    local result = poll.step(sessions, "profile", i, false, read_all(), game.tick)
+    bytes = bytes + #helpers.table_to_json(result) -- Factorio requires the result to be used
+  end
+  p_poll.stop()
+  p_poll.divide(n)
+
+  -- Split: readers alone (two network reads each) and writers alone (section filters).
+  local p_readers, p_writers = game.create_profiler(true), game.create_profiler(true)
+  for _ = 1, n do
+    for _, entry in ipairs(registry.entries()) do
+      if not entry.entity.valid then
+        -- skip
+      elseif entry.kind == "reader" then
+        p_readers.restart()
+        network_values(entry.entity, defines.wire_connector_id.circuit_red)
+        network_values(entry.entity, defines.wire_connector_id.circuit_green)
+        p_readers.stop()
+      else
+        p_writers.restart()
+        registry.writer_values(entry)
+        p_writers.stop()
+      end
+    end
+  end
+  p_readers.divide(n)
+  p_writers.divide(n)
+
+  local readers, writers = 0, 0
+  for _ in pairs(values.readers) do readers = readers + 1 end
+  for _ in pairs(values.writers) do writers = writers + 1 end
+  rcon.print({ "", "read_all ", p_read, " | poll ", p_poll, " | readers_only ", p_readers, " | writers_only ",
+    p_writers, " | readers " .. readers .. " writers " .. writers
+    .. " | delta bytes " .. math.floor(bytes / n) })
 end
 
 function handlers.opc_spike_error()
@@ -172,6 +258,7 @@ local help = {
   opc_write = "set OPC Writer signals (JSON parameter)",
   opc_spike_payload = "spike: reply with N bytes",
   opc_spike_error = "spike: raise a Lua error",
+  opc_spike_profile = "spike: time the poll path over N runs",
 }
 
 function api.register_commands()

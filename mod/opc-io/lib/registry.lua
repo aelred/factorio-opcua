@@ -53,23 +53,54 @@ function registry.get_by_unit(unit)
 end
 
 -- Entries with valid entities, sorted by name for deterministic output.
+-- All entries sorted by name, rebuilt only when model_version changes (every
+-- add, remove and rename bumps it). A plain local is fine as a cache: it only
+-- speeds up producing the same result, which comes from storage.
+-- Callers must skip entries whose entity is no longer valid.
+local sorted_entries, sorted_version
+
 function registry.entries()
-  local list = {}
-  for _, entry in pairs(state().by_name) do
-    if entry.entity.valid then
-      list[#list + 1] = entry
+  local s = state()
+  if sorted_entries == nil or sorted_version ~= s.model_version then
+    sorted_entries = {}
+    for _, entry in pairs(s.by_name) do
+      sorted_entries[#sorted_entries + 1] = entry
     end
+    table.sort(sorted_entries, function(a, b) return a.name < b.name end)
+    sorted_version = s.model_version
   end
-  table.sort(list, function(a, b) return a.name < b.name end)
-  return list
+  return sorted_entries
 end
 
 local function control(entity)
   return entity.get_or_create_control_behavior()
 end
 
--- Current writer output as {key = value}.
-function registry.writer_values(entity)
+local function copy(map)
+  local result = {}
+  for k, v in pairs(map) do
+    result[k] = v
+  end
+  return result
+end
+registry.copy = copy
+
+local function same(a, b)
+  for k, v in pairs(a) do
+    if b[k] ~= v then
+      return false
+    end
+  end
+  for k in pairs(b) do
+    if a[k] == nil then
+      return false
+    end
+  end
+  return true
+end
+
+-- A writer's actual output, read from its sections. Comparatively expensive.
+function registry.read_writer(entity)
   local cb = control(entity)
   local map = {}
   for i = 1, cb.sections_count do
@@ -81,9 +112,42 @@ function registry.writer_values(entity)
   return map
 end
 
-function registry.set_writer_values(entity, map)
-  local cb = control(entity)
-  cb.get_section(1).filters = signals.to_filters(map)
+-- A writer's output as cached in its entry (kept in storage). The mod is the
+-- only thing that changes writer output (its GUI replaces the combinator's,
+-- and pastes are normalized), and audit_writers catches anything else.
+function registry.writer_values(entry)
+  if entry.values == nil then
+    entry.values = registry.read_writer(entry.entity)
+  end
+  return entry.values
+end
+
+function registry.set_writer_values(entry, map)
+  control(entry.entity).get_section(1).filters = signals.to_filters(map)
+  entry.values = copy(map)
+end
+
+-- Re-reads `count` writers (round robin) and fixes their cached values if
+-- something outside the mod changed them, e.g. another mod's script.
+function registry.audit_writers(count)
+  local s = state()
+  local writers = {}
+  for _, entry in ipairs(registry.entries()) do
+    if entry.kind == "writer" and entry.entity.valid then
+      writers[#writers + 1] = entry
+    end
+  end
+  if #writers == 0 then
+    return
+  end
+  for _ = 1, math.min(count, #writers) do
+    s.audit_index = (s.audit_index or 0) % #writers + 1
+    local entry = writers[s.audit_index]
+    local actual = registry.read_writer(entry.entity)
+    if entry.values == nil or not same(actual, entry.values) then
+      entry.values = actual
+    end
+  end
 end
 
 -- Enforces the invariants script relies on, whatever a blueprint, paste or
@@ -95,15 +159,19 @@ function registry.normalize(entity, kind)
   local cb = control(entity)
   local keep = {}
   if kind == "writer" then
-    keep = registry.writer_values(entity)
+    keep = registry.read_writer(entity)
   end
   for i = cb.sections_count, 1, -1 do
     cb.remove_section(i)
   end
   if kind == "writer" then
     cb.add_section()
-    registry.set_writer_values(entity, keep)
+    cb.get_section(1).filters = signals.to_filters(keep)
     cb.enabled = true
+    local entry = state().by_unit[entity.unit_number]
+    if entry then
+      entry.values = keep
+    end
   else
     cb.enabled = false
   end

@@ -13,11 +13,12 @@ Ignition, KEPServerEX, Node-RED, PLCs). The project has two parts:
 See [PLAN.md](PLAN.md) for the design and milestones, and
 [docs/spike-results.md](docs/spike-results.md) for measured RCON behaviour.
 
-**Status:** milestone 4 is done. OPC UA clients can browse readers and
+**Status:** milestone 5 is done. OPC UA clients can browse readers and
 writers, read and subscribe to signals, and write writer signals. Polling
-sends only what changed, and tag changes raise OPC model-change events.
-There is no OPC security or login yet (milestone 5), so keep the endpoint on
-localhost or a trusted network. The bridge needs opc-io 0.3.0 or newer.
+sends only what changed, and tag changes raise model-change events. Security
+covers encryption, user logins with read or write roles and an audit log;
+see [docs/security.md](docs/security.md). The bridge needs opc-io 0.3.0 or
+newer.
 
 ## Quick start
 
@@ -36,8 +37,10 @@ localhost or a trusted network. The bridge needs opc-io 0.3.0 or newer.
    Alternatively, copy `bridge/example.toml` and run
    `factorio-opc --config my.toml`.
 4. Connect your OPC UA client to `opc.tcp://127.0.0.1:4840/factorio-opc/`
-   with security None. Use `--endpoint opc.tcp://0.0.0.0:4840/factorio-opc/`
-   to accept connections from other machines.
+   with security None. Before accepting connections from other machines
+   (`--endpoint opc.tcp://0.0.0.0:4840/factorio-opc/`), set up logins or
+   encryption as described in [docs/security.md](docs/security.md); the
+   bridge refuses to expose unencrypted anonymous access to the network.
 
 ## Development
 
