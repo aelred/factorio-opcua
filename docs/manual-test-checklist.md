@@ -35,17 +35,20 @@ Last full pass: 2026-10-16, opc-io 0.2.0, all items passed.
 
 ## Using opcua-client
 
-Every client step in this checklist uses FreeOpcUa **`opcua-client` 1.0.2
-or newer**, which works on macOS without an account. To install it:
+Every client step in this checklist uses FreeOpcUa **`opcua-client` 1.0.1**,
+which works on macOS without an account. To install it:
 ```sh
-uv tool install --python 3.14 opcua-client   # uv fetches Python 3.14 if needed
-# or, with mise: mise install python@3.14 && pipx install --python "$(mise where python@3.14)/bin/python3" opcua-client
+uv tool install --python 3.14 "opcua-client==1.0.1"   # uv fetches Python 3.14 if needed
+# or, with Python 3.14 active (e.g. mise use -g python@3.14): python3 -m pip install "opcua-client==1.0.1"
 opcua-client
 ```
-Use **1.0.2 or newer**. Releases since 0.9.99 need Python 3.14, and on an
-older Python, pip quietly installs 0.8.4 (from 2022). That version has bugs
-that get in the way here: its certificate dialog crashes, and it can't use
-the Aes256 policy.
+Use **1.0.1** for now:
+- 0.9.99 and later need Python 3.14. On an older Python, pip quietly
+  installs 0.8.4 (2022). Its certificate dialog crashes, and it can't use
+  the Aes256 policy.
+- 1.0.2 broke right-click **Call**
+  (`AttributeError: 'TreeWidget' object has no attribute 'get_parent_node'`).
+  The repository's code was still broken as of 2026-10-18.
 
 The terms below are its UI:
 
@@ -113,8 +116,9 @@ over RCON.
 ## Security and metrics (milestone 5)
 
 Setup: make a password hash with `factorio-opc hash-password`.
-- **No client certificate needed:** opcua-client 1.0.2 creates its own on
-  the first encrypted connection.
+- **Client certificate:** once, in opcua-client, open **Settings → Client
+  Application Certificate**, press **Generate self-signed certificate**, then
+  OK. opcua-client 1.0.1 refuses encrypted endpoints until it has one.
 - **The bridge's certificate:** the bridge creates its own server
   certificate in `~/.factorio-opc/pki/` when it starts.
 - **Access:** the bridge accepts any client certificate, using it only to

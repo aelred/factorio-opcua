@@ -98,19 +98,22 @@ Linux and Windows, no sign-in) is the easiest client to recommend. It can
 browse, subscribe, write, and call methods, giving each argument its own
 field, so JSON with several signals works. To install and start it:
 ```sh
-uv tool install --python 3.14 opcua-client   # uv fetches Python 3.14 if needed
-# or, with mise: mise install python@3.14 && pipx install --python "$(mise where python@3.14)/bin/python3" opcua-client
+uv tool install --python 3.14 "opcua-client==1.0.1"   # uv fetches Python 3.14 if needed
+# or, with Python 3.14 active (e.g. mise use -g python@3.14): python3 -m pip install "opcua-client==1.0.1"
 opcua-client
 ```
-Use **1.0.2 or newer**. Releases since 0.9.99 need Python 3.14, and on an
-older Python, pip quietly installs 0.8.4 (from 2022). That version has bugs
-that get in the way here: its certificate dialog crashes, and it can't use
-the Aes256 policy.
+Use **1.0.1** for now:
+- 0.9.99 and later need Python 3.14. On an older Python, pip quietly
+  installs 0.8.4 (2022). Its certificate dialog crashes, and it can't use
+  the Aes256 policy.
+- 1.0.2 broke right-click **Call**
+  (`AttributeError: 'TreeWidget' object has no attribute 'get_parent_node'`).
+  The repository's code was still broken as of 2026-10-18.
 
 Connect to `opc.tcp://127.0.0.1:4840/factorio-opc/`, then right-click
-`SetSignals` and choose **Call**. Checked with opcua-client 1.0.2 (and,
-earlier, 0.8.4): its call dialog set two signals in one call against the
-bridge.
+`SetSignals` and choose **Call**. Checked with opcua-client 1.0.1 (and,
+earlier, 0.8.4), through the main window's Call action: one call set two
+signals.
 
 **asyncua's `uacall`** is installed alongside the bridge. Prefix the method
 name with the namespace index (`2:`), or you'll get `BadNoMatch`:

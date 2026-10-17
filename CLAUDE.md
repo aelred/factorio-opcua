@@ -15,11 +15,13 @@ Design and milestones are in PLAN.md, protocol in docs/protocol.md, and the OPC 
   and `api.PROTO` plus `game.PROTO` in the bridge when the RCON protocol changes.
 
 ## Manual checks (docs/manual-test-checklist.md)
-- The user is on macOS and tests with FreeOpcUa **opcua-client 1.0.2+** (Python 3.14; not UaExpert). Write all client
+- The user is on macOS and tests with FreeOpcUa **opcua-client 1.0.1** (Python 3.14; not UaExpert; 1.0.2's
+  right-click Call crashes with a missing TreeWidget.get_parent_node). Write all client
   steps for its UI: Connect button → "Connect to server" dialog (security mode radio, endpoint list, Anonymous/Username
   login), Disconnect button, "Subscribe to data change" → Subscriptions pane, Attributes pane to write a Value,
   right-click "Call" for methods, "Subscribe to events" on Objects/Server → Events pane (shows Message only).
 - opcua-client caches the tree and ignores model change events: refreshing means Disconnect then Connect.
-- opcua-client 1.0.2 creates its own client certificate for encrypted endpoints; both policies work. (0.8.4, which
+- opcua-client 1.0.1 needs a client certificate before encrypted connects: Settings → Client Application Certificate →
+  "Generate self-signed certificate". Both policies work. (0.8.4, which
   pip picks on Python < 3.14, needs make-client-cert + scripts/opcua-client-set-cert.py and Basic256Sha256 only.)
 - Things only a game client can check (GUI, graphics, blueprints, paste) go on that checklist too.

@@ -105,19 +105,23 @@ server, or on a private network, and don't expose the RCON port.
 
 ## Connecting with opcua-client (encrypted, with a login)
 
-These steps are for opcua-client **1.0.2 or newer**, which needs Python
-3.14 (`uv tool install --python 3.14 opcua-client`).
+These steps are for opcua-client **1.0.1**, which needs Python 3.14
+(`uv tool install --python 3.14 "opcua-client==1.0.1"`). Avoid 1.0.2: its
+right-click Call crashes.
 
+0. Once: open **Settings → Client Application Certificate**, press
+   **Generate self-signed certificate**, then OK. This is opcua-client's own
+   certificate; the bridge needs no copy.
 1. Enter `opc.tcp://127.0.0.1:4840/factorio-opc/` and press **Connect**.
 2. In the **Connect to server** dialog, choose **SignAndEncrypt** and pick an
    endpoint. Basic256Sha256 and Aes256_Sha256_RsaPss both work.
 3. Choose **Username**, then enter the user and password.
-4. Press **Connect**. On the first encrypted connection, opcua-client creates
-   its own client certificate. The bridge needs no copy of it.
+4. Press **Connect**.
 
-Checked with opcua-client 1.0.2 under Python 3.14: an Aes256_Sha256_RsaPss +
-SignAndEncrypt connection, logged in as a write user, read values and set
-two signals in one `SetSignals` call.
+Checked with opcua-client 1.0.1 under Python 3.14, using its own menu
+actions: it generated a certificate, connected with Aes256_Sha256_RsaPss and
+SignAndEncrypt as a write user, and set two signals with one right-click
+Call of `SetSignals`.
 
 **Older opcua-client (0.8.4).** pip installs 0.8.4 on Python 3.13 and older.
 It can't create a certificate, and its Settings → Client Application
