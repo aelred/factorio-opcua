@@ -39,7 +39,7 @@ from urllib.parse import urlparse
 
 MIN_POLL_HZ = 1.0
 # RCON commands run once per tick, so a sequential poll tops out near 30 Hz
-# (docs/spike-results.md).
+# (docs/address-space.md, Performance).
 MAX_POLL_HZ = 30.0
 
 SECURITY_MODES = ("none", "sign", "sign_encrypt")

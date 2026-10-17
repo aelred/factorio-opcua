@@ -1,7 +1,8 @@
 # factorio-opc
 
 Factorio 2.0 mod (`mod/opc-io`, Lua) and Python OPC UA bridge (`bridge/`, asyncua) talking over RCON.
-Design and milestones are in PLAN.md, protocol in docs/protocol.md, and the OPC address space in docs/address-space.md.
+The RCON protocol is in docs/protocol.md, the OPC address space and performance figures in docs/address-space.md,
+security in docs/security.md, Docker in docs/docker.md and releases in docs/releasing.md.
 
 ## Working on it
 - Tests: `.venv/bin/pytest`. Integration tests in `mod/tests/integration` need the dev server
@@ -16,14 +17,13 @@ Design and milestones are in PLAN.md, protocol in docs/protocol.md, and the OPC 
   in the bridge when the RCON protocol changes. Releases: docs/releasing.md (tag vX.Y.Z; don't tag without asking).
 - bridge/LICENSE is a copy of LICENSE (CI compares them).
 
-## Manual checks (docs/manual-test-checklist.md)
-- The user is on macOS and tests with FreeOpcUa **opcua-client 1.0.1** (Python 3.14; not UaExpert; 1.0.2's
-  right-click Call crashes with a missing TreeWidget.get_parent_node). Write all client
-  steps for its UI: Connect button → "Connect to server" dialog (security mode radio, endpoint list, Anonymous/Username
-  login), Disconnect button, "Subscribe to data change" → Subscriptions pane, Attributes pane to write a Value,
-  right-click "Call" for methods, "Subscribe to events" on Objects/Server → Events pane (shows Message only).
+## Manual checks
+When something needs checking by hand (GUI, graphics, blueprints, paste, or an OPC client), give the user steps in chat.
+- The user is on macOS and uses FreeOpcUa **opcua-client 1.0.1** (Python 3.14; not UaExpert; 1.0.2's right-click
+  Call crashes with a missing TreeWidget.get_parent_node). Write steps for its UI: Connect button → "Connect to server"
+  dialog (security mode radio, endpoint list, Anonymous/Username login), Disconnect button, "Subscribe to data
+  change" → Subscriptions pane, Attributes pane to write a Value, right-click "Call" for methods, "Subscribe to
+  events" on Objects/Server → Events pane (shows Message only).
 - opcua-client caches the tree and ignores model change events: refreshing means Disconnect then Connect.
-- opcua-client 1.0.1 needs a client certificate before encrypted connects: Settings → Client Application Certificate →
-  "Generate self-signed certificate". Both policies work. (0.8.4, which
-  pip picks on Python < 3.14, needs make-client-cert + scripts/opcua-client-set-cert.py and Basic256Sha256 only.)
-- Things only a game client can check (GUI, graphics, blueprints, paste) go on that checklist too.
+- Encrypted connections need opcua-client's own certificate first: Settings → Client Application Certificate →
+  "Generate self-signed certificate". Both policies work.

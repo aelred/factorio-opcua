@@ -100,15 +100,12 @@ shows how to call methods from it and from the command line.
 
 | Document | Contents |
 |---|---|
-| [docs/address-space.md](docs/address-space.md) | OPC UA nodes, status codes, events, polling |
+| [docs/address-space.md](docs/address-space.md) | OPC UA nodes, status codes, events, polling, performance |
 | [docs/security.md](docs/security.md) | Endpoints, certificates, users and roles, audit log |
 | [docs/docker.md](docs/docker.md) | Running Factorio and the bridge with Docker |
 | [docs/protocol.md](docs/protocol.md) | The mod's RCON commands |
-| [docs/spike-results.md](docs/spike-results.md) | Measured RCON behaviour and load-test results |
-| [docs/manual-test-checklist.md](docs/manual-test-checklist.md) | Checks that need a game client or an OPC client |
 | [docs/releasing.md](docs/releasing.md) | How releases are made |
 | [CHANGELOG.md](CHANGELOG.md) | Changes per version |
-| [PLAN.md](PLAN.md) | Design and milestones |
 
 ## Development
 

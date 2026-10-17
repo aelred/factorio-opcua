@@ -178,3 +178,40 @@ asyncio.run(main())
 - **Resync:** if the mod has lost track of the session, for example after
   the server reloads an older save, the reply is full and the bridge
   resynchronizes everything.
+
+## Performance
+
+These figures were measured on Factorio 2.0.77 headless.
+
+**RCON timing:**
+- An RCON command runs at the next game tick, so a round trip takes one
+  tick (about 16.7 ms).
+- That limits `poll_hz` to 30. The default is 10.
+- Writes from clients take effect on the next tick too.
+
+**Auto-pause:**
+- Set `"auto_pause": false` in the server settings.
+- With auto-pause on and no players connected, every RCON command still
+  advances the game by one tick. The bridge's polling then becomes what
+  drives the factory, at `poll_hz` ticks per second.
+
+**Cost inside the game:** the mod reads every reader's networks on each
+poll. Timed with Factorio's profiler, with 5 signals per writer:
+
+| Setup | Time per poll | Share of the tick budget at 10 Hz |
+|---|---|---|
+| 100 writers, each wired to its own reader | 1.9 ms | 1.9% |
+| 500 writers, each wired to its own reader | 10.7 ms | 10.7% |
+| 1 writer, 100 readers on one network | 0.7 ms | 0.7% |
+| 1 writer, 500 readers on one network | 3.3 ms | 3.3% |
+
+**What drives the cost:**
+- Readers dominate, at about 7 µs each, mostly in engine calls.
+- A network shared by many readers is read only once per poll.
+- Writer values are cached. Each poll re-checks 1/20 of the writers, so a
+  change made outside the bridge, such as by another mod, shows within
+  about 2 seconds at 10 Hz.
+
+**Large setups:** the whole read lands in a single tick, so hundreds of
+separately wired readers can cause a visible hitch on a busy server. Keep
+`poll_hz` low, or wire readers onto shared networks where you can.

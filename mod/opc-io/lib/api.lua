@@ -26,9 +26,7 @@ local function rcon_only(handler)
       return
     end
     local ok, result = pcall(handler, cmd)
-    if ok and result == nil then
-      return -- the handler printed its own reply (spike profiling)
-    elseif ok then
+    if ok then
       result.ok = true
       reply(result)
     elseif type(result) == "table" and result.opc_error then
@@ -185,80 +183,12 @@ function handlers.opc_write(cmd)
   return { tick = game.tick, tag = tag, signals = values }
 end
 
--- Spike helpers kept so spike/spike.py stays reproducible.
-function handlers.opc_spike_payload(cmd)
-  local n = math.floor(tonumber(cmd.parameter) or 0)
-  return { payload = string.rep("x", n) }
-end
-
--- Load-test helper: average time of the poll path over N runs, from Factorio's
--- profiler. Replies with plain text (profiler values can only be printed), e.g.
--- "read_all Duration: 1.2ms | poll Duration: 1.3ms | readers 500 writers 500".
-function handlers.opc_spike_profile(cmd)
-  local n = math.max(1, math.floor(tonumber(cmd.parameter) or 10))
-  local values
-  local p_read = game.create_profiler()
-  for _ = 1, n do
-    values = read_all()
-  end
-  p_read.stop()
-  p_read.divide(n)
-
-  -- A full poll cycle as the bridge sees it once values are steady:
-  -- read, diff against the previous reply, encode the (empty) delta.
-  local sessions = {}
-  poll.step(sessions, "profile", nil, false, read_all(), game.tick)
-  local bytes = 0
-  local p_poll = game.create_profiler()
-  for i = 1, n do
-    local result = poll.step(sessions, "profile", i, false, read_all(), game.tick)
-    bytes = bytes + #helpers.table_to_json(result) -- Factorio requires the result to be used
-  end
-  p_poll.stop()
-  p_poll.divide(n)
-
-  -- Split: readers alone (two network reads each) and writers alone (section filters).
-  local p_readers, p_writers = game.create_profiler(true), game.create_profiler(true)
-  for _ = 1, n do
-    for _, entry in ipairs(registry.entries()) do
-      if not entry.entity.valid then
-        -- skip
-      elseif entry.kind == "reader" then
-        p_readers.restart()
-        network_values(entry.entity, defines.wire_connector_id.circuit_red)
-        network_values(entry.entity, defines.wire_connector_id.circuit_green)
-        p_readers.stop()
-      else
-        p_writers.restart()
-        registry.writer_values(entry)
-        p_writers.stop()
-      end
-    end
-  end
-  p_readers.divide(n)
-  p_writers.divide(n)
-
-  local readers, writers = 0, 0
-  for _ in pairs(values.readers) do readers = readers + 1 end
-  for _ in pairs(values.writers) do writers = writers + 1 end
-  rcon.print({ "", "read_all ", p_read, " | poll ", p_poll, " | readers_only ", p_readers, " | writers_only ",
-    p_writers, " | readers " .. readers .. " writers " .. writers
-    .. " | delta bytes " .. math.floor(bytes / n) })
-end
-
-function handlers.opc_spike_error()
-  error("opc_spike_error: deliberate error")
-end
-
 local help = {
   opc_hello = "handshake",
   opc_browse = "list OPC tags",
   opc_snapshot = "read all OPC tag values",
   opc_poll = "read OPC tag values changed since the last poll (JSON parameter)",
   opc_write = "set OPC Writer signals (JSON parameter)",
-  opc_spike_payload = "spike: reply with N bytes",
-  opc_spike_error = "spike: raise a Lua error",
-  opc_spike_profile = "spike: time the poll path over N runs",
 }
 
 function api.register_commands()

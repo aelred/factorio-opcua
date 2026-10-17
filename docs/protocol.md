@@ -12,7 +12,7 @@ are rejected when a player types them in game; they only work over RCON.
 ## General rules
 - **Errors** come back as `{"ok":false,"error":"<message>"}`. The mod never
   lets a Lua error escape a command, because an uncaught error stops a
-  multiplayer server (see `spike-results.md`).
+  multiplayer server.
 - **Unknown commands** return Factorio's plain-text `Unknown command ...`,
   which isn't JSON. Treat a reply that doesn't parse as a protocol error.
 - **Empty maps and lists** both encode as `{}`. Factorio's `table_to_json`
@@ -119,11 +119,6 @@ Reply:
   `signal-each`) are rejected.
 
 Reply: `{"ok":true,"tick":...,"tag":"writer-1","signals":{...full new output...}}`.
-
-### Spike helpers
-`/opc_spike_payload <n>` replies with `{"payload":"xxx…"}`, and
-`/opc_spike_error` raises a Lua error that is caught. Both exist only for
-`spike/spike.py`.
 
 ## Entity behaviour
 - **OPC Writer**: a constant combinator with exactly one signal section and

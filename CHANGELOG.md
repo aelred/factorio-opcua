@@ -16,8 +16,8 @@ First packaged release.
   `/opc_write`, and `/opc_poll`, which returns only changes. Errors come back
   as JSON and never stop the server.
 - **Quality:** quality signals are supported with Space Age.
-- **Performance:** a 500-pair poll takes about 11 ms; see
-  `docs/spike-results.md`.
+- **Performance:** a 500-pair poll takes about 11 ms; see the Performance
+  section of `docs/address-space.md`.
 
 **Bridge (factorio-opc):**
 - **Address space:** an OPC UA server with readers (Red/Green/Total), writers

@@ -1,6 +1,6 @@
 """Minimal asyncio Source-RCON client tuned for Factorio.
 
-Factorio specifics (measured against 2.0.77, see docs/spike-results.md):
+Factorio specifics (measured against 2.0.77):
 - Each command reply arrives as exactly one packet, however large (1 MB tested),
   so there is no multi-packet reassembly.
 - Empty "sentinel" packets are not echoed, so the usual end-of-reply trick

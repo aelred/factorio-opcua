@@ -123,14 +123,6 @@ actions: it generated a certificate, connected with Aes256_Sha256_RsaPss and
 SignAndEncrypt as a write user, and set two signals with one right-click
 Call of `SetSignals`.
 
-**Older opcua-client (0.8.4).** pip installs 0.8.4 on Python 3.13 and older.
-It can't create a certificate, and its Settings → Client Application
-Certificate dialog crashes (`NameError: name 'QDialog' is not defined`).
-To work around both:
-- Make a certificate with `factorio-opc make-client-cert ~/uaclient-cert`.
-- Register it with `python3 scripts/opcua-client-set-cert.py ~/uaclient-cert`,
-  run with opcua-client closed.
-- Put the login in the address: `opc.tcp://user:pass@...`.
-- Under **Connect options → Query server capability**, choose Basic256Sha256.
-
-Upgrading is easier.
+On Python 3.13 and older, pip installs opcua-client 0.8.4 instead. That
+version's certificate dialog crashes and it can't use the Aes256 policy,
+so use 1.0.1.
