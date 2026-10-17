@@ -13,12 +13,23 @@ services:
       - "34197:34197/udp"        # game port for players; RCON stays on the internal network
     volumes:
       - ./factorio:/factorio
+    # Healthy once RCON answers and opc-io replies to /opc_hello. The image's
+    # own `rcon` tool finds the generated password; it exits 0 even for
+    # errors, so the check looks for "ok":true in the reply.
+    healthcheck:
+      test: ["CMD-SHELL", "rcon /opc_hello | grep -q '\"ok\":true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 300s   # map generation on first start can take a while
+      start_interval: 2s
 
   bridge:
     build: ../bridge
-    restart: unless-stopped      # also retries until Factorio has written its RCON password
+    restart: unless-stopped
     depends_on:
-      - factorio
+      factorio:
+        condition: service_healthy   # RCON up and opc-io loaded
     ports:
       # Published on this machine only. To serve the network, change this to
       # "4840:4840" AND tighten bridge.toml first (docs/security.md).

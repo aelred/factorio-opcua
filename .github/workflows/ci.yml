@@ -34,10 +34,8 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install -r requirements-dev.txt
-      - name: Start Factorio with opc-io
+      - name: Start Factorio with opc-io (waits until healthy)
         run: scripts/dev-server.sh up
-      - name: Wait for the server
-        run: python scripts/wait-for-server.py --timeout 300
       - run: pytest mod/tests/integration
         env:
           FACTORIO_REQUIRE_SERVER: "1"   # fail rather than skip if the server isn't reachable

@@ -10,3 +10,13 @@ services:
       - "127.0.0.1:27015:27015/tcp"
     volumes:
       - ../.dev/factorio:/factorio
+    # Healthy once RCON answers and opc-io replies to /opc_hello. The image's
+    # own `rcon` tool finds the generated password; it exits 0 even for
+    # errors, so the check looks for "ok":true in the reply.
+    healthcheck:
+      test: ["CMD-SHELL", "rcon /opc_hello | grep -q '\"ok\":true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 300s   # map generation on first start can take a while
+      start_interval: 2s

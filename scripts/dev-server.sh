@@ -25,7 +25,8 @@ fi
 
 compose=(docker compose -f docker/compose.yml)
 case "${1:-up}" in
-  up)   "${compose[@]}" up -d --force-recreate ;;
+  # --wait returns once the healthcheck passes: RCON is up and opc-io answers.
+  up)   "${compose[@]}" up -d --force-recreate --wait --wait-timeout 300 ;;
   down) "${compose[@]}" down ;;
   logs) "${compose[@]}" logs -f ;;
   *)    echo "usage: $0 [up|down|logs]" >&2; exit 2 ;;

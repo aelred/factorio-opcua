@@ -12,8 +12,7 @@ From a clone of this repository:
 cd deploy
 mkdir -p factorio/mods
 cp /path/to/opc-io_<version>.zip factorio/mods/   # from a GitHub release, or scripts/package-mod.sh
-docker compose up -d
-docker compose logs -f bridge                     # wait for "connected to Factorio"
+docker compose up -d --wait                       # returns once both are running
 ```
 
 Then connect an OPC UA client to `opc.tcp://127.0.0.1:4840/factorio-opc/`.
@@ -21,8 +20,10 @@ Then connect an OPC UA client to `opc.tcp://127.0.0.1:4840/factorio-opc/`.
 - **Data:** the Factorio server keeps its saves and config in
   `deploy/factorio/`. On first start it creates a map and an RCON password
   (`factorio/config/rconpw`), which the bridge reads.
-- **Startup order:** if the bridge starts before that file exists, it exits
-  and Docker restarts it.
+- **Startup order:** the bridge starts only once the Factorio service is
+  healthy, meaning RCON answers and opc-io replies to `/opc_hello`. If the
+  mod is missing from `factorio/mods/`, Factorio stays unhealthy and the
+  bridge doesn't start; `docker compose ps` shows this.
 
 ## Server settings
 
