@@ -158,6 +158,10 @@ role = "write"
       expect: Polls rises steadily, Writes and WriteErrors count your
       writes, Tags and SignalNodes match the tree, and Reconnects
       increases after you stop and start the Factorio server.
-- [ ] Setting the endpoint to `opc.tcp://0.0.0.0:4840/factorio-opc/` in
-      that config, with `security` still including "none", makes the
-      bridge refuse to start and explain why.
+- [ ] Network safety check: add `endpoint = "opc.tcp://0.0.0.0:4840/factorio-opc/"`
+      under `[opcua]` in that config (`0.0.0.0` means "reachable from other
+      machines", while `127.0.0.1` means this computer only). With
+      `security` still including "none" and `anonymous = "read"`, running
+      the bridge exits immediately with
+      `factorio-opc: endpoint ... is reachable from the network with security 'none' and anonymous 'read' access ...`,
+      listing the three ways to fix it. Remove the line again afterwards.
