@@ -96,7 +96,10 @@ over RCON.
 ## Security and metrics (milestone 5)
 
 Setup: make a password hash with `factorio-opc hash-password`, and a client
-certificate with `factorio-opc make-client-cert ~/uaclient-cert`.
+certificate with `factorio-opc make-client-cert ~/uaclient-cert`, then run
+`python3 scripts/opcua-client-set-cert.py ~/uaclient-cert` with opcua-client
+closed. Don't use opcua-client's Client Application Certificate menu; it
+crashes in 0.8.4.
 The client certificate is for **opcua-client**, which can't make its own; the
 bridge doesn't need a copy. The bridge creates its own server certificate in
 `~/.factorio-opc/pki/` when it starts, and accepts any client certificate,
@@ -123,8 +126,8 @@ role = "write"
       allows the write and the method call. A wrong password refuses the
       connection.
 - [ ] Encrypted connection: follow "Connecting with opcua-client" in
-      `docs/security.md` (client certificate, Query server capability,
-      SignAndEncrypt + Basic256Sha256). The connection works, and so do
+      `docs/security.md` (certificate set by the script, Query server
+      capability, SignAndEncrypt + Basic256Sha256). The connection works, and so do
       writes as operator.
 - [ ] The bridge's log shows a line like
       `write press {"virtual/signal-A": 5} by operator` for each write.

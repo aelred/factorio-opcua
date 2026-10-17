@@ -20,5 +20,6 @@ Design and milestones are in PLAN.md, protocol in docs/protocol.md, and the OPC 
   right-click "Call" for methods, "Subscribe to events" on Objects/Server → Events pane (shows Message only).
 - opcua-client caches the tree and ignores model change events: refreshing means Disconnect then Connect.
 - opcua-client logins go in the URL (`opc.tcp://user:pw@host:4840/factorio-opc/`); encryption needs a client
-  certificate (`factorio-opc make-client-cert`) and the Basic256Sha256 policy (not Aes256_Sha256_RsaPss).
+  certificate (`factorio-opc make-client-cert`, then `scripts/opcua-client-set-cert.py`, because opcua-client 0.8.4's
+  certificate dialog crashes) and the Basic256Sha256 policy (not Aes256_Sha256_RsaPss).
 - Things only a game client can check (GUI, graphics, blueprints, paste) go on that checklist too.

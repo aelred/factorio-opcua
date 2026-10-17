@@ -107,8 +107,12 @@ server, or on a private network, and don't expose the RCON port.
 
 1. Make a client certificate once: `factorio-opc make-client-cert ~/uaclient-cert`.
    It's opcua-client's own certificate; the bridge needs nothing from it.
-2. In opcua-client, choose **Settings → Client Application Certificate**, and
-   select `client_cert.der` and then `client_key.pem` from that folder.
+2. Tell opcua-client to use it. With opcua-client closed, run
+   `python3 scripts/opcua-client-set-cert.py ~/uaclient-cert`, using the
+   Python that has opcua-client installed.
+   The menu item meant for this (Settings → Client Application Certificate)
+   crashes in opcua-client 0.8.4 (`NameError: name 'QDialog' is not
+   defined`) before saving, so the script writes the same two settings.
 3. Enter the address with your login in it:
    `opc.tcp://operator:yourpassword@127.0.0.1:4840/factorio-opc/`.
 4. Press **Connect options**, then **Query server capability**. Pick
