@@ -31,8 +31,8 @@ On first start the Factorio image copies its default
 `factorio/config/server-settings.json`. Edit it, then
 `docker compose restart factorio`:
 - **Auto-pause:** set `"auto_pause": false`. Otherwise, with no players, the
-  bridge's polling is what advances the game (see the Performance section
-  of `address-space.md`).
+  bridge's polling is what advances the game: each RCON command moves a
+  paused game on by one tick.
 - **Server visibility and login:** the defaults publish the server and check
   players' factorio.com accounts. That needs your factorio.com username and
   token in the file. For a private server, set

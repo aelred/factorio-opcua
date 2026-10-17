@@ -100,7 +100,7 @@ shows how to call methods from it and from the command line.
 
 | Document | Contents |
 |---|---|
-| [docs/address-space.md](docs/address-space.md) | OPC UA nodes, status codes, events, polling, performance |
+| [docs/address-space.md](docs/address-space.md) | OPC UA nodes, status codes, events, polling |
 | [docs/security.md](docs/security.md) | Endpoints, certificates, users and roles, audit log |
 | [docs/docker.md](docs/docker.md) | Running Factorio and the bridge with Docker |
 | [docs/protocol.md](docs/protocol.md) | The mod's RCON commands |
