@@ -30,59 +30,62 @@ Download the latest release from
 [Releases](https://github.com/aelred/factorio-opc/releases). The mod and the
 bridge share a version number; use the same one for both.
 
-1. **Mod:** copy `opc-io_<version>.zip` into the server's `mods/` folder.
-   Players joining the server download it automatically.
-2. **Server:** run Factorio 2.0 headless with RCON:
-   `factorio --start-server <save> --rcon-port 27015 --rcon-password <pw>`.
-   In its server settings, set `"auto_pause": false`.
-3. **Bridge:** this needs Python 3.11 or newer.
-   ```sh
-   pipx install factorio_opc-<version>-py3-none-any.whl   # or pip install
-   FACTORIO_RCON_PASSWORD=<pw> factorio-opc --rcon-host <server>
-   ```
-   For anything beyond a quick try, copy
-   [bridge/example.toml](bridge/example.toml) and run
-   `factorio-opc --config my.toml`.
-4. **Client:** connect your OPC UA client to
-   `opc.tcp://127.0.0.1:4840/factorio-opc/`.
+### 1. Run Factorio with the mod and RCON
 
+Choose either option. The bridge works the same with both.
+
+**A. A dedicated server**
+1. Copy `opc-io_<version>.zip` into the server's `mods/` folder. Players
+   who join download the mod automatically.
+2. Start the server with RCON:
+   `factorio --start-server <save> --rcon-port 27015 --rcon-password <pw>`.
+3. In its server settings, set `"auto_pause": false`. Otherwise, with no
+   players online, the bridge's polling is what moves the game forward.
+
+To run the server and the bridge together in Docker, see
+[docs/docker.md](docs/docker.md).
+
+**B. Your own game, hosted from the main menu**
+1. Copy `opc-io_<version>.zip` into your mods folder:
+   - macOS: `~/Library/Application Support/factorio/mods`
+   - Windows: `%APPDATA%\Factorio\mods`
+   - Linux: `~/.factorio/mods`
+2. Turn on RCON for games you host:
+   - In the main menu, hold **Ctrl + Alt** (Ctrl + Option on a Mac) and
+     click **Settings**. A
+     **The rest** button appears; click it.
+   - Set `local-rcon-socket` to `127.0.0.1:27015`. Use the IP address,
+     not `localhost`. The default `0.0.0.0:0` means RCON is off.
+   - Set `local-rcon-password` to a password of your choice.
+   - Restart Factorio; most settings on this page only take effect after
+     a restart.
+3. Choose **Multiplayer → Host new game** (or Host saved game). Single
+   player never runs RCON.
+
+You're the host, so you're admin: the map editor and cheats work. With
+you in the game, auto-pause doesn't apply.
+
+### 2. Run the bridge
+
+This needs Python 3.11 or newer.
+```sh
+pipx install factorio_opc-<version>-py3-none-any.whl   # or pip install
+FACTORIO_RCON_PASSWORD=<pw> factorio-opc --rcon-host <server>   # leave out --rcon-host for your own game
+```
+For anything beyond a quick try, copy
+[bridge/example.toml](bridge/example.toml) and run
+`factorio-opc --config my.toml`.
+
+### 3. Connect and build
+
+Connect your OPC UA client to `opc.tcp://127.0.0.1:4840/factorio-opc/`.
 In game, build an OPC Writer or Reader (unlocked by Circuit network), open
 it to name its tag, and wire it into your circuits.
-
-**Docker:** [deploy/compose.yml](deploy/compose.yml) runs a Factorio server
-and the bridge together; see [docs/docker.md](docs/docker.md).
 
 **Security:** by default the bridge accepts connections from this machine
 only, with no login. To serve other machines, set up logins or encryption
 first, as in [docs/security.md](docs/security.md). The bridge refuses to
 expose unencrypted anonymous access to the network.
-
-### Hosting from your own game instead of a server
-
-A multiplayer game hosted from Factorio's menu can run RCON too, and you
-are admin there, so the map editor and cheats are available. The
-`--rcon-*` command-line flags don't apply to it. It uses two settings in
-`config.ini` instead. Single player never runs RCON.
-
-1. Copy `opc-io_<version>.zip` into your mods folder
-   (macOS: `~/Library/Application Support/factorio/mods`).
-2. **Quit Factorio**, then edit `config.ini`:
-   - macOS: `~/Library/Application Support/factorio/config/config.ini`
-   - Windows: `%APPDATA%\Factorio\config\config.ini`
-   - Linux: `~/.factorio/config/config.ini`
-
-   In its `[other]` section, uncomment and set:
-   ```ini
-   local-rcon-socket=127.0.0.1:27015
-   local-rcon-password=<pw>
-   ```
-   The default `0.0.0.0:0` means RCON is off. `127.0.0.1` keeps RCON to
-   your own machine. Edit the file with the game closed, because Factorio
-   can overwrite `config.ini` when it exits.
-3. Start Factorio, then choose Multiplayer → Host new game.
-   `factorio-current.log` (in the folder above `config/`) should show
-   `Starting RCON interface at IP ADDR:({127.0.0.1:27015})`.
-4. Run `FACTORIO_RCON_PASSWORD=<pw> factorio-opc`.
 
 ### A desktop OPC UA client
 
