@@ -131,6 +131,21 @@ scripts/dev-server.sh down
 - **CI:** GitHub Actions runs the unit tests on Python 3.11 and 3.13, the
   integration tests against a real headless server, and the package builds.
 
+### Conventions
+
+- **Never let a Lua error escape.** In multiplayer, an uncaught error in a
+  command or event handler stops the whole server. Register RCON commands
+  through `rcon_only` in `mod/opc-io/lib/api.lua`, which turns errors into
+  JSON error replies, and event handlers through `safe` in
+  `mod/opc-io/control.lua`.
+- **Protocol changes:** when the RCON protocol changes, bump both
+  `api.PROTO` in `mod/opc-io/lib/api.lua` and `PROTO` in
+  `bridge/factorio_opc/game.py`. The bridge refuses to talk to a mod with
+  a different protocol.
+- **No certificates in tests:** tests that start a `Bridge` should pass
+  `security=["none"]` or a temporary `pki_dir`. Otherwise they write a
+  certificate to `~/.factorio-opc`.
+
 ## License
 
 MIT, see [LICENSE](LICENSE). The mod's graphics are the base game's
