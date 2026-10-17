@@ -81,14 +81,14 @@ over RCON.
 
 ## Model changes in a client (milestone 4)
 
-- [ ] Subscribe to data change on one of a tag's signals, then rename the
+- [x] Subscribe to data change on one of a tag's signals, then rename the
       tag in game. Within a second the subscription's status turns
       `BadNodeIdUnknown`. After Disconnect and Connect, the tree shows the
       tag under its new name, with current values.
-- [ ] Subscribe to a reader signal, then mine that reader: its status turns
+- [x] Subscribe to a reader signal, then mine that reader: its status turns
       `BadNodeIdUnknown`, and after a reconnect the tag is gone from the
       tree.
-- [ ] Subscribe to events on `Objects/Server`, then place a new writer in
+- [x] Subscribe to events on `Objects/Server`, then place a new writer in
       game: one event appears in the Events pane, with a Message like
       `Added Writers/writer-12`. Renaming a tag gives
       `Added Writers/<new>; removed Writers/<old>`.
