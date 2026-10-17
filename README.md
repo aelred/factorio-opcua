@@ -52,8 +52,7 @@ To run the server and the bridge together in Docker, see
    - Linux: `~/.factorio/mods`
 2. Turn on RCON for games you host:
    - In the main menu, hold **Ctrl + Alt** (Ctrl + Option on a Mac) and
-     click **Settings**. A
-     **The rest** button appears; click it.
+     click **Settings**. A **The rest** button appears; click it.
    - Set `local-rcon-socket` to `127.0.0.1:27015`. Use the IP address,
      not `localhost`. The default `0.0.0.0:0` means RCON is off.
    - Set `local-rcon-password` to a password of your choice.
