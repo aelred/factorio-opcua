@@ -42,16 +42,16 @@ Setup: `scripts/dev-server.sh up` (or your own server with RCON), then
 login. Building entities needs a game client connected to the server, or
 `/sc` commands over RCON.
 
-- [ ] Factorio/Status shows Connected = true, plus the game tick, versions
+- [x] Factorio/Status shows Connected = true, plus the game tick, versions
       and latency.
-- [ ] Readers and Writers list your in-game tags; renaming a tag in game
+- [x] Readers and Writers list your in-game tags; renaming a tag in game
       updates the tree within a second (you may need to refresh the browse
       view).
-- [ ] Reader values update live in the Data Access view as the circuit
+- [x] Reader values update live in the Data Access view as the circuit
       changes, and Total = Red + Green.
-- [ ] Calling `SetSignals` on a writer with `{"virtual/signal-A": 5}` and
+- [x] Calling `SetSignals` on a writer with `{"virtual/signal-A": 5}` and
       `merge` makes the signal appear in game and under `Signals/`.
-- [ ] Writing a writer's signal node changes the in-game output; writing a
+- [x] Writing a writer's signal node changes the in-game output; writing a
       reader node is refused.
-- [ ] Stopping the Factorio server makes values go Uncertain and Connected
+- [x] Stopping the Factorio server makes values go Uncertain and Connected
       false; starting it again brings them back to Good.
