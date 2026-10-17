@@ -6,7 +6,7 @@ import pytest
 async def test_hello(factorio):
     hello = await factorio.command("opc_hello")
     assert hello["ok"] is True
-    assert hello["proto"] == 1
+    assert hello["proto"] == 2
     assert hello["factorio_version"].startswith("2.0")
     assert isinstance(hello["model_version"], int)
 
@@ -148,3 +148,47 @@ async def test_rename_via_remote_interface(factorio):
         == "boiler_feed"
     write = await factorio.command("opc_write", {"tag": "boiler_feed", "signals": {"virtual/signal-A": 1}})
     assert write["ok"] is True
+
+
+async def test_poll_full_then_deltas(factorio):
+    writer = await factorio.create("writer", 120, 10)
+    reader = await factorio.create("reader", 122, 10)
+    await factorio.wire(writer, reader, "red")
+    w = (await factorio.tag_by_unit(writer))["name"]
+    r = (await factorio.tag_by_unit(reader))["name"]
+    session = "itest-poll"
+
+    first = await factorio.command("opc_poll", {"session": session, "full": True})
+    assert first["ok"] and first["full"] is True
+    assert {"tick_paused", "speed", "model_version", "tick", "seq"} <= set(first)
+    assert r in first["readers"] and w in first["writers"]
+
+    quiet = await factorio.command("opc_poll", {"session": session, "ack": first["seq"]})
+    assert quiet["full"] is False and quiet["seq"] == first["seq"] + 1
+    assert not quiet["readers"] and not quiet["writers"] and not quiet["removed"]
+
+    await factorio.command("opc_write", {"tag": w, "signals": {"virtual/signal-A": 4}})
+    await factorio.ticks(2)
+    changed = await factorio.command("opc_poll", {"session": session, "ack": quiet["seq"]})
+    assert changed["writers"] == {w: {"virtual/signal-A": 4}}
+    assert changed["readers"] == {r: {"red": {"virtual/signal-A": 4}, "green": {}}}
+
+    # A stale ack (e.g. the bridge missed a reply) gets a full resync.
+    resync = await factorio.command("opc_poll", {"session": session, "ack": quiet["seq"]})
+    assert resync["full"] is True and resync["writers"][w] == {"virtual/signal-A": 4}
+
+    await factorio.destroy(reader)
+    await factorio.ticks(2)
+    gone = await factorio.command("opc_poll", {"session": session, "ack": resync["seq"]})
+    assert gone["removed"] == [r]
+
+
+@pytest.mark.parametrize("payload, message", [
+    ("", "missing JSON parameter"),
+    ({}, "'session' must be"),
+    ({"session": "a b"}, "'session' must be"),
+    ({"session": "ok", "ack": "1"}, "'ack' must be an integer"),
+])
+async def test_poll_rejects_bad_requests(factorio, payload, message):
+    reply = await factorio.command("opc_poll", payload)
+    assert reply["ok"] is False and message in reply["error"]

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import json
 import logging
 import time
+import uuid
+import warnings
 from typing import Callable
 from urllib.parse import urlparse
 
@@ -13,11 +16,16 @@ from asyncua import Server, ua
 from asyncua.crypto.permission_rules import User
 
 from .config import Config
-from .game import GameApi, GameError, RconGame
+from .game import GameApi, GameError, Hello, RconGame
 from .model import NAMESPACE_URI, AddressSpace, now
 from .rcon import RconError
 
 log = logging.getLogger("factorio_opc")
+
+# asyncua's delete_nodes calls an async monitored-item callback without awaiting
+# it. The bridge notifies subscribers itself before deleting (model.py), so the
+# resulting warning is noise.
+warnings.filterwarnings("ignore", message="coroutine 'MonitoredItemService.datachange_callback' was never awaited")
 
 BACKOFF_START = 1.0
 BACKOFF_MAX = 30.0
@@ -123,7 +131,7 @@ class Bridge:
                 self._model_version = None
                 await self.model.set_connected(hello)
                 backoff = BACKOFF_START
-                await self._poll(game)
+                await self._poll(game, hello)
             except (RconError, GameError, OSError, asyncio.TimeoutError) as exc:
                 was_connected = self.game is not None
                 await self._disconnect()
@@ -143,22 +151,32 @@ class Bridge:
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, BACKOFF_MAX)
 
-    async def _poll(self, game: GameApi) -> None:
+    async def _poll(self, game: GameApi, hello: Hello) -> None:
+        """Poll changes until the connection fails.
+
+        Each connection is a new poll session, so its first reply is full; after
+        that the mod sends only changes since the reply we acknowledge.
+        """
         assert self.model is not None
         loop = asyncio.get_running_loop()
         interval = 1.0 / self.config.poll_hz
         next_at = loop.time()
+        session = uuid.uuid4().hex
+        ack: int | None = None
         while True:
             start = time.perf_counter()
-            # Pipelined: both commands normally run in the same game tick.
-            hello, snapshot = await asyncio.gather(game.hello(), game.snapshot())
+            poll = await game.poll(session, ack)
             received = now()
             latency_ms = (time.perf_counter() - start) * 1000
-            if snapshot.model_version != self._model_version:
+            if poll.full or poll.model_version != self._model_version:
                 await self.model.sync_tags(await game.browse(), self._method_write)
-                self._model_version = snapshot.model_version
-            await self.model.apply_snapshot(snapshot, received)
+                self._model_version = poll.model_version
+            await self.model.apply_poll(poll, received)
+            ack = poll.seq
+            hello = dataclasses.replace(hello, tick=poll.tick, tick_paused=poll.tick_paused, speed=poll.speed,
+                                        model_version=poll.model_version)
             await self.model.set_status(hello, latency_ms)
+            await self.model.emit_model_changes()
             # Only after the first full sync, so every tag's nodes exist once this is set.
             self.connected.set()
             next_at += interval

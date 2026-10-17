@@ -76,3 +76,39 @@ async def test_opc_write_reaches_reader_through_the_game(factorio, rcon):
                 raise AssertionError(f"invalid signal was accepted: {result}")
         finally:
             await client.disconnect()
+
+
+async def test_rename_in_game_moves_nodes_and_emits_model_change(factorio, rcon):
+    writer = await factorio.create("writer", 130, 10)
+    old = (await factorio.tag_by_unit(writer))["name"]
+    await factorio.command("opc_write", {"tag": old, "signals": {"virtual/signal-R": 9}})
+
+    config = Config(rcon_host=rcon.host, rcon_port=rcon.port, rcon_password=rcon._password,
+                    endpoint=f"opc.tcp://127.0.0.1:{free_port()}/factorio-opc/", poll_hz=10)
+    async with Bridge(config) as bridge:
+        await asyncio.wait_for(bridge.connected.wait(), 10)
+        client = Client(config.endpoint, timeout=5)
+        await client.connect()
+        try:
+            ns = await client.get_namespace_index("urn:factorio-opc")
+            events = asyncio.Queue()
+
+            class Handler:
+                def event_notification(self, event):
+                    events.put_nowait(event)
+
+            sub = await client.create_subscription(50, Handler())
+            await sub.subscribe_events(client.nodes.server,
+                                       client.get_node(ua.ObjectIds.GeneralModelChangeEventType))
+            assert await client.get_node(ua.NodeId(f"Writers/{old}/Signals/virtual/signal-R", ns)).read_value() == 9
+
+            await factorio.lua(f'return remote.call("opc-io", "rename", "{old}", "e2e_renamed")')
+            changes = set()
+            while ("Writers/e2e_renamed", 5) not in changes:
+                event = await asyncio.wait_for(events.get(), 5)
+                changes |= {(c.Affected.Identifier, c.Verb) for c in event.Changes}
+            assert (f"Writers/{old}", 10) in changes
+            new_value = client.get_node(ua.NodeId("Writers/e2e_renamed/Signals/virtual/signal-R", ns))
+            assert await new_value.read_value() == 9
+        finally:
+            await client.disconnect()

@@ -1,4 +1,4 @@
-# opc-io RCON protocol (proto 1)
+# opc-io RCON protocol (proto 2)
 
 The bridge talks to the `opc-io` mod with ordinary RCON console commands.
 Each command replies with **one JSON object** containing `"ok"`. Commands
@@ -45,9 +45,12 @@ copy whose name is already taken gets `-2`, `-3`, ... appended.
 
 ## Commands
 
+Protocol 2 (opc-io 0.3.0) added `/opc_poll`. Bridge 0.4.0 and later
+require it.
+
 ### `/opc_hello`
 ```json
-{"ok":true,"proto":1,"mod_version":"0.2.0","factorio_version":"2.0.77",
+{"ok":true,"proto":2,"mod_version":"0.3.0","factorio_version":"2.0.77",
  "tick":7172,"tick_paused":false,"speed":1,"model_version":2}
 ```
 
@@ -69,6 +72,40 @@ writer, its current output is reported.
  "writers":{"writer-1":{"item/iron-plate":5,"virtual/signal-A":-3}}}
 ```
 A writer's output shows up on wired networks on the next tick.
+
+### `/opc_poll <json>`
+Change-only polling, which is what the bridge uses on every cycle.
+```json
+{"session":"8f2c...","ack":41}
+```
+- `session` is 1–64 characters of `[A-Za-z0-9_-]`. The bridge picks a new
+  random one for each connection.
+- `ack` is the `seq` of the last reply the caller applied; leave it out on
+  the first poll. Add `"full":true` to force a full reply.
+
+Reply:
+```json
+{"ok":true,"seq":42,"full":false,"tick":7700,"tick_paused":false,"speed":1,"model_version":3,
+ "readers":{"reader-1":{"red":{"item/iron-plate":6},"green":{}}},
+ "writers":{"writer-1":{"virtual/signal-A":0}},
+ "removed":["old-tag"]}
+```
+- **Full replies:** when `full` is true, `readers` and `writers` hold every
+  value, as in `/opc_snapshot`.
+- **Delta replies:** otherwise they hold only tags that changed since reply
+  `ack`:
+  - A reader lists only the changed keys of each wire.
+  - A signal that went away is reported as `0`.
+  - A tag that is new to this session appears with all its values.
+  - `removed` lists tags that no longer exist.
+- **When the mod falls back to a full reply:** the mod remembers, per
+  session, what it last sent. If the session is unknown, has expired (5
+  minutes without a poll; at most 16 sessions are kept), or its last `seq`
+  doesn't equal `ack`, the reply is full. A mismatch happens, for example,
+  when a reply was lost or the server reloaded an older save. So a
+  caller that always sends the `seq` it applied can't drift out of sync.
+- **Tag changes:** when `model_version` changes, re-run `/opc_browse`.
+- **Storage:** session state lives in the save (`storage.opc.sessions`).
 
 ### `/opc_write <json>`
 ```json

@@ -2,12 +2,14 @@
 -- Every reply is one JSON object with "ok". All handlers go through rcon_only,
 -- which catches errors: an uncaught error in a command stops a multiplayer server.
 
+local poll = require("lib.poll")
 local registry = require("lib.registry")
 local signals = require("lib.signals")
 
 local api = {}
 
-api.PROTO = 1
+-- 2: added /opc_poll (change-only polling) and tick_paused/speed in its reply.
+api.PROTO = 2
 
 local function reply(t)
   rcon.print(helpers.table_to_json(t))
@@ -81,7 +83,7 @@ function handlers.opc_browse()
   return { tick = game.tick, model_version = registry.model_version(), tags = tags }
 end
 
-function handlers.opc_snapshot()
+local function read_all()
   local readers, writers = {}, {}
   for _, entry in ipairs(registry.entries()) do
     if entry.kind == "reader" then
@@ -93,7 +95,29 @@ function handlers.opc_snapshot()
       writers[entry.name] = registry.writer_values(entry.entity)
     end
   end
-  return { tick = game.tick, model_version = registry.model_version(), readers = readers, writers = writers }
+  return { readers = readers, writers = writers }
+end
+
+function handlers.opc_snapshot()
+  local values = read_all()
+  return { tick = game.tick, model_version = registry.model_version(), readers = values.readers,
+           writers = values.writers }
+end
+
+-- {"session": "<id>", "ack": <seq of the last reply applied>, "full": false}
+-- Returns only what changed since the last reply to this session; see lib/poll.lua.
+function handlers.opc_poll(cmd)
+  local request = decode(cmd.parameter)
+  local session, ack, force_full = poll.parse_request(request)
+  if not session then
+    fail(ack)
+  end
+  local result = poll.step(registry.sessions(), session, ack, force_full, read_all(), game.tick)
+  result.tick = game.tick
+  result.tick_paused = game.tick_paused
+  result.speed = game.speed
+  result.model_version = registry.model_version()
+  return result
 end
 
 -- {"tag": "line_1", "signals": {"item/iron-plate": 5}, "mode": "merge"|"replace"}
@@ -144,6 +168,7 @@ local help = {
   opc_hello = "handshake",
   opc_browse = "list OPC tags",
   opc_snapshot = "read all OPC tag values",
+  opc_poll = "read OPC tag values changed since the last poll (JSON parameter)",
   opc_write = "set OPC Writer signals (JSON parameter)",
   opc_spike_payload = "spike: reply with N bytes",
   opc_spike_error = "spike: raise a Lua error",

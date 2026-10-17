@@ -14,6 +14,8 @@ either wire of a reader gets a node in Red, Green and Total.
 
 Values are pushed straight into the address space instead of through a
 session write, so only client writes reach the write interception in server.py.
+The game's values are cached here so /opc_poll deltas can be applied, and
+added or deleted nodes are reported as GeneralModelChangeEvents.
 """
 
 from __future__ import annotations
@@ -25,7 +27,7 @@ from typing import Awaitable, Callable
 from asyncua import Server, ua
 from asyncua.common.node import Node
 
-from .game import Hello, SignalMap, Snapshot, Tag
+from .game import Hello, Poll, SignalMap, Snapshot, Tag
 
 NAMESPACE_URI = "urn:factorio-opc"
 
@@ -33,6 +35,10 @@ GOOD = ua.StatusCode(ua.StatusCodes.Good)
 STALE = ua.StatusCode(ua.StatusCodes.UncertainNoCommunicationLastUsableValue)
 
 READER_CHANNELS = ("Red", "Green", "Total")
+
+# ModelChangeStructureDataType verbs (OPC UA Part 3, GeneralModelChangeEventType).
+VERB_ADDED = 1 | 4    # NodeAdded | ReferenceAdded
+VERB_DELETED = 2 | 8  # NodeDeleted | ReferenceDeleted
 
 # (tag name, json signals, mode) -> new signals; raises ua.UaStatusCodeError on failure.
 MethodHandler = Callable[[str, str, str], Awaitable[str]]
@@ -66,6 +72,11 @@ class AddressSpace:
         self.writer_signal_nodes: dict[ua.NodeId, tuple[str, str]] = {}
         self._status: dict[str, Node] = {}
         self._stale = False
+        # The game's current values, kept so deltas can be applied: reader -> (red, green).
+        self._readers: dict[str, tuple[SignalMap, SignalMap]] = {}
+        self._writers: dict[str, SignalMap] = {}
+        self._pending_changes: list[ua.ModelChangeStructureDataType] = []
+        self._change_generators: list = []
 
     def nodeid(self, path: str) -> ua.NodeId:
         return ua.NodeId(path, self.ns)
@@ -92,6 +103,12 @@ class AddressSpace:
             )
         self.readers = await root.add_folder(self.nodeid("Readers"), self.qname("Readers"))
         self.writers = await root.add_folder(self.nodeid("Writers"), self.qname("Writers"))
+        for source in (self._server.nodes.server, root):
+            generator = await self._server.get_event_generator(ua.ObjectIds.GeneralModelChangeEventType, source)
+            # asyncua 2.1 records the Changes field's type as a DataType NodeId,
+            # which fails when the event is encoded; it is an ExtensionObject array.
+            generator.event.data_types["Changes"] = ua.VariantType.ExtensionObject
+            self._change_generators.append(generator)
 
     async def _push(self, node: Node, variant: ua.Variant, status: ua.StatusCode = GOOD,
                     source_time: datetime | None = None) -> None:
@@ -125,7 +142,8 @@ class AddressSpace:
     async def sync_tags(self, tags: list[Tag], method_handler: MethodHandler) -> None:
         """Add nodes for new tags and delete nodes of tags that are gone.
 
-        A renamed tag shows up as one removal and one addition.
+        A renamed tag shows up as one removal and one addition (its NodeIds
+        contain the name). Values of new tags are pushed from the cache.
         """
         wanted = {t.name: t for t in tags}
         for name in [n for n, nodes in self.tags.items() if n not in wanted or wanted[n].kind != nodes.tag.kind]:
@@ -133,12 +151,22 @@ class AddressSpace:
         for name, tag in wanted.items():
             if name not in self.tags:
                 await self._add_tag(tag, method_handler)
+                if tag.kind == "reader":
+                    await self._update_reader(name, None, now())
+                else:
+                    await self._update_writer(name, None, now())
 
     async def _remove_tag(self, name: str) -> None:
         nodes = self.tags.pop(name)
         for nodeid in [n for n, (tag, _) in self.writer_signal_nodes.items() if tag == name]:
             del self.writer_signal_nodes[nodeid]
+        # Tell subscribers the item is gone; asyncua's own notification on delete
+        # never runs (it calls an async callback without awaiting it).
+        gone = ua.StatusCode(ua.StatusCodes.BadNodeIdUnknown)
+        for node in nodes.signals.values():
+            await self._push(node, ua.Variant(None), gone)
         await self._server.delete_nodes([nodes.root], recursive=True)
+        self._changed(nodes.root.nodeid, ua.ObjectIds.BaseObjectType, VERB_DELETED)
 
     async def _add_tag(self, tag: Tag, method_handler: MethodHandler) -> None:
         if tag.kind == "reader":
@@ -153,6 +181,7 @@ class AddressSpace:
             channels = {"Signals": await root.add_folder(self.nodeid(f"{base}/Signals"), self.qname("Signals"))}
             await self._add_writer_methods(root, base, tag.name, method_handler)
         self.tags[tag.name] = TagNodes(tag=tag, root=root, channels=channels)
+        self._changed(root.nodeid, ua.ObjectIds.BaseObjectType, VERB_ADDED)
 
     async def _add_writer_methods(self, root: Node, base: str, name: str, handler: MethodHandler) -> None:
         # asyncua turns exceptions from methods into BadUnexpectedError; a returned
@@ -205,38 +234,82 @@ class AddressSpace:
                 self.writer_signal_nodes[node.nodeid] = (nodes.tag.name, key)
             nodes.signals[(channel, key)] = node
             nodes.values[(channel, key)] = 0
+            self._changed(node.nodeid, ua.ObjectIds.BaseDataVariableType, VERB_ADDED)
         return node
 
-    async def _apply_channel(self, nodes: TagNodes, channel: str, values: SignalMap, when: datetime,
-                             extra_keys: set[str] = frozenset()) -> None:
-        keys = set(values) | set(extra_keys) | {k for (c, k) in nodes.signals if c == channel}
+    async def _set_signal(self, nodes: TagNodes, channel: str, key: str, value: int, when: datetime) -> None:
+        node = await self._signal_node(nodes, channel, key)
+        if self._stale or nodes.values.get((channel, key)) != value:
+            nodes.values[(channel, key)] = value
+            await self._push(node, ua.Variant(value, ua.VariantType.Int32), GOOD, when)
+
+    async def _update_reader(self, name: str, keys: set[str] | None, when: datetime) -> None:
+        """Push Red/Green/Total for `keys` (None: every key the tag has) from the cache."""
+        nodes = self.tags.get(name)
+        if nodes is None or nodes.tag.kind != "reader":
+            return
+        red, green = self._readers.get(name, ({}, {}))
+        if keys is None:
+            keys = set(red) | set(green) | {k for (_, k) in nodes.signals}
+        # A signal seen on either wire gets a node in all three channels.
         for key in sorted(keys):
-            value = values.get(key, 0)
-            node = await self._signal_node(nodes, channel, key)
-            if self._stale or nodes.values.get((channel, key)) != value:
-                nodes.values[(channel, key)] = value
-                await self._push(node, ua.Variant(value, ua.VariantType.Int32), GOOD, when)
+            r, g = red.get(key, 0), green.get(key, 0)
+            await self._set_signal(nodes, "Red", key, r, when)
+            await self._set_signal(nodes, "Green", key, g, when)
+            await self._set_signal(nodes, "Total", key, wrap_int32(r + g), when)
+
+    async def _update_writer(self, name: str, keys: set[str] | None, when: datetime) -> None:
+        nodes = self.tags.get(name)
+        if nodes is None or nodes.tag.kind != "writer":
+            return
+        values = self._writers.get(name, {})
+        if keys is None:
+            keys = set(values) | {k for (_, k) in nodes.signals}
+        for key in sorted(keys):
+            await self._set_signal(nodes, "Signals", key, values.get(key, 0), when)
 
     async def apply_writer(self, name: str, values: SignalMap, when: datetime | None = None) -> None:
-        nodes = self.tags.get(name)
-        if nodes is not None and nodes.tag.kind == "writer":
-            await self._apply_channel(nodes, "Signals", values, when or now())
+        """A writer's full output (e.g. from a write reply)."""
+        self._writers[name] = dict(values)
+        await self._update_writer(name, None, when or now())
 
     async def apply_snapshot(self, snapshot: Snapshot, when: datetime) -> None:
+        """Replace all cached values and push every signal."""
+        self._readers = {n: (dict(r.red), dict(r.green)) for n, r in snapshot.readers.items()}
+        self._writers = {n: dict(w) for n, w in snapshot.writers.items()}
         for name, nodes in self.tags.items():
             if nodes.tag.kind == "reader":
-                r = snapshot.readers.get(name)
-                if r is None:
-                    continue
-                total = dict(r.red)
-                for k, v in r.green.items():
-                    total[k] = wrap_int32(total.get(k, 0) + v)
-                # A signal seen on either wire gets a node in all three channels.
-                for channel, values in (("Red", r.red), ("Green", r.green), ("Total", total)):
-                    await self._apply_channel(nodes, channel, values, when, extra_keys=set(total))
-            elif name in snapshot.writers:
-                await self._apply_channel(nodes, "Signals", snapshot.writers[name], when)
+                await self._update_reader(name, None, when)
+            else:
+                await self._update_writer(name, None, when)
         self._stale = False
+
+    async def apply_poll(self, poll: Poll, when: datetime) -> None:
+        """Apply a /opc_poll reply: a full one replaces everything, a delta only touches what changed."""
+        if poll.full:
+            await self.apply_snapshot(Snapshot(tick=poll.tick, model_version=poll.model_version,
+                                               readers=poll.readers, writers=poll.writers), when)
+            return
+        for name in poll.removed:
+            self._readers.pop(name, None)
+            self._writers.pop(name, None)
+        for name, changes in poll.readers.items():
+            red, green = self._readers.setdefault(name, ({}, {}))
+            for cached, delta in ((red, changes.red), (green, changes.green)):
+                for key, value in delta.items():
+                    if value == 0:
+                        cached.pop(key, None)
+                    else:
+                        cached[key] = value
+            await self._update_reader(name, set(changes.red) | set(changes.green), when)
+        for name, delta in poll.writers.items():
+            cached = self._writers.setdefault(name, {})
+            for key, value in delta.items():
+                if value == 0:
+                    cached.pop(key, None)
+                else:
+                    cached[key] = value
+            await self._update_writer(name, set(delta), when)
 
     async def mark_stale(self) -> None:
         """Flag every tag value as last-known (connection to the game lost)."""
@@ -248,3 +321,23 @@ class AddressSpace:
             for (channel, key), node in nodes.signals.items():
                 value = nodes.values[(channel, key)]
                 await self._push(node, ua.Variant(value, ua.VariantType.Int32), STALE)
+
+    # -- model change events -------------------------------------------------
+
+    def _changed(self, nodeid: ua.NodeId, type_id: int, verb: int) -> None:
+        self._pending_changes.append(ua.ModelChangeStructureDataType(
+            Affected=nodeid, AffectedType=ua.NodeId(type_id), Verb=verb))
+
+    async def emit_model_changes(self) -> None:
+        """Send one GeneralModelChangeEvent listing every node added or deleted since the last call.
+
+        Emitted from both the Server object (where generic clients subscribe)
+        and Objects/Factorio, because asyncua only delivers an event to
+        subscribers of the node that emits it.
+        """
+        if not self._pending_changes:
+            return
+        changes, self._pending_changes = self._pending_changes, []
+        for generator in self._change_generators:
+            generator.event.Changes = changes
+            await generator.trigger(message=f"{len(changes)} node(s) added or removed")

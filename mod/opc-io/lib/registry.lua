@@ -4,6 +4,7 @@
 --   by_name[name]        = same entry
 --   model_version        bumped on every add, remove or rename
 --   next_index[kind]     counter for default names ("reader-1", ...)
+--   sessions             bridge poll sessions (lib/poll.lua)
 
 local names = require("lib.names")
 local signals = require("lib.signals")
@@ -20,6 +21,11 @@ function registry.init()
   s.by_name = s.by_name or {}
   s.model_version = s.model_version or 0
   s.next_index = s.next_index or { reader = 1, writer = 1 }
+  s.sessions = s.sessions or {} -- bridge poll sessions, see lib/poll.lua
+end
+
+function registry.sessions()
+  return storage.opc.sessions
 end
 
 local function state()

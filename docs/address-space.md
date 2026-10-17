@@ -120,10 +120,30 @@ async def main():
 asyncio.run(main())
 ```
 
-## Tag changes
-When `ModelVersion` changes, the bridge re-browses the game:
-- New tags get nodes.
-- Removed tags lose theirs.
-- A rename appears as a removal plus an addition.
+## Tag changes and model change events
+- **When the bridge re-syncs:** whenever `ModelVersion` changes or the mod
+  sends a full reply, the bridge re-browses the game.
+  - New tags get nodes, filled from current values straight away.
+  - Removed tags lose theirs.
+  - A rename appears as a removal plus an addition, because NodeIds contain
+    the tag name.
+- **Subscribers to a removed tag:** their signals first receive the status
+  `BadNodeIdUnknown`, so they notice. The nodes are deleted after that.
+- **Events:** every poll cycle that adds or deletes nodes (tags or new
+  signal nodes) emits one **`GeneralModelChangeEvent`**.
+  - Each entry in its `Changes` names the affected node with a `Verb` of
+    5 (NodeAdded + ReferenceAdded) or 10 (NodeDeleted + ReferenceDeleted).
+    `AffectedType` is BaseObjectType for tags and BaseDataVariableType for
+    signals.
+  - The event is emitted from the Server object, where most clients
+    subscribe, and from `Objects/Factorio`.
 
-ModelChange events arrive in milestone 4.
+## Polling
+- **Requests:** the bridge sends one `/opc_poll` per cycle (see
+  [protocol.md](protocol.md#opc_poll-json)). The first reply on a connection
+  is full; after that the mod sends only changes.
+- **Cost:** a quiet factory costs about 136 bytes per poll whatever its size
+  (measured with 400 tags; a full read is about 50 KB).
+- **Resync:** if the mod has lost track of the session, for example after
+  the server reloads an older save, the reply is full and the bridge
+  resynchronizes everything.

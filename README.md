@@ -13,10 +13,11 @@ Ignition, KEPServerEX, Node-RED, PLCs). The project has two parts:
 See [PLAN.md](PLAN.md) for the design and milestones, and
 [docs/spike-results.md](docs/spike-results.md) for measured RCON behaviour.
 
-**Status:** milestone 3 (bridge MVP) is done. OPC UA clients can browse
-readers and writers, read and subscribe to signals, and write writer signals.
+**Status:** milestone 4 is done. OPC UA clients can browse readers and
+writers, read and subscribe to signals, and write writer signals. Polling
+sends only what changed, and tag changes raise OPC model-change events.
 There is no OPC security or login yet (milestone 5), so keep the endpoint on
-localhost or a trusted network.
+localhost or a trusted network. The bridge needs opc-io 0.3.0 or newer.
 
 ## Quick start
 

@@ -79,6 +79,8 @@ multiplayer-safe.
 | `/opc_snapshot` | All current values (on connect or resync) | same shape, full |
 | `/opc_write <json>` | `{tag, signals:{sig:val}, mode:"merge"\|"replace"}` | `{ok, error?}` |
 
+- *(As built in M4: `/opc_poll` takes `{session, ack, full}` and returns
+  `seq`; see `docs/protocol.md`.)*
 - *(As built in M2: `/opc_poll` is deferred to M4; `/opc_snapshot` returns
   red and green separately and the bridge computes Total. Writer values live
   in the combinator itself, not in `storage`. See `docs/protocol.md`.)*
@@ -165,8 +167,12 @@ docs/                  setup, address-space reference, protocol spec
 3. ✅ **Bridge MVP:** RCON client, address space from browse, 10 Hz snapshot
    polling, writable writer nodes. Done; see `docs/address-space.md`. The
    UaExpert walkthrough is in `docs/manual-test-checklist.md`.
-4. **Deltas and dynamic model:** `opc_poll` deltas, model-change events,
-   rename and remove handling, reconnect and resync, status codes.
+4. ✅ **Deltas and dynamic model:** `opc_poll` deltas, model-change events,
+   rename and remove handling, reconnect and resync, status codes. Done:
+   seq/ack sessions fall back to a full reply on any mismatch, the bridge
+   polls once per cycle, removed tags send `BadNodeIdUnknown`, and
+   GeneralModelChangeEvents are emitted. Measured in
+   `docs/spike-results.md`.
 5. **Hardening:** security policies and users, config file, structured
    logging, metrics (`Status/*`), and a load test (for example 500 readers
    at 10 Hz) with a UPS-impact measurement.

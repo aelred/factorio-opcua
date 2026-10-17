@@ -287,3 +287,96 @@ async def test_admin_username_does_not_bypass_access_levels(bridge):
             await target.write_value(ua.DataValue(ua.Variant(1, ua.VariantType.UInt64)))
     finally:
         await c.disconnect()
+
+
+async def test_first_poll_is_full_then_deltas(client, world):
+    await eventually(lambda: value(client, "Readers/line_1/Red/item/iron-plate"))
+    assert world.polls[0].full is True
+    world.set_reader("line_1", red={"item/iron-plate": 6}, green={"item/iron-plate": 2})
+
+    async def updated():
+        assert await value(client, "Readers/line_1/Red/item/iron-plate") == 6
+        assert await value(client, "Readers/line_1/Total/item/iron-plate") == 8
+        # signal-A left the green wire: the delta carries it as 0.
+        assert await value(client, "Readers/line_1/Green/virtual/signal-A") == 0
+        assert await value(client, "Readers/line_1/Total/virtual/signal-A") == 0
+
+    await eventually(updated)
+
+    async def quiet_poll_seen():
+        # Once values settle, polls carry no values at all.
+        assert any(not p.readers and not p.writers for p in world.polls[1:])
+
+    await eventually(quiet_poll_seen)
+    assert not any(p.full for p in world.polls[1:])
+
+
+async def test_mod_losing_session_state_triggers_full_resync(client, world):
+    """E.g. the server reloaded an older save: its session state no longer matches our ack."""
+    await eventually(lambda: value(client, "Readers/line_1/Red/item/iron-plate"))
+    world.sessions.clear()
+    world.set_reader("line_1", red={"item/iron-plate": 42})
+
+    async def resynced():
+        assert await value(client, "Readers/line_1/Red/item/iron-plate") == 42
+        assert await value(client, "Readers/line_1/Green/item/iron-plate") == 0
+
+    await eventually(resynced)
+    assert sum(p.full for p in world.polls) == 2
+
+
+async def test_model_change_events_for_added_and_removed_tags(client, world):
+    await eventually(lambda: value(client, "Readers/line_1/Red/item/iron-plate"))
+    events = asyncio.Queue()
+
+    class Handler:
+        def event_notification(self, event):
+            events.put_nowait(event)
+
+    sub = await client.create_subscription(50, Handler())
+    await sub.subscribe_events(client.nodes.server, client.get_node(ua.ObjectIds.GeneralModelChangeEventType))
+
+    async def next_changes():
+        event = await asyncio.wait_for(events.get(), 3)
+        return {(c.Affected.Identifier, c.Verb) for c in event.Changes}
+
+    world.add("writer", "added_w")
+    world.writers["added_w"] = {"virtual/signal-Z": 1}
+    changes = await next_changes()
+    assert ("Writers/added_w", 5) in changes                          # NodeAdded | ReferenceAdded
+    assert ("Writers/added_w/Signals/virtual/signal-Z", 5) in changes
+
+    world.remove("line_1")
+    assert ("Readers/line_1", 10) in await next_changes()             # NodeDeleted | ReferenceDeleted
+    await sub.delete()
+
+
+async def test_subscribers_of_a_removed_tag_get_a_bad_status(client, world):
+    await eventually(lambda: value(client, "Readers/line_1/Red/item/iron-plate"))
+    updates = asyncio.Queue()
+
+    class Handler:
+        def datachange_notification(self, n, val, data):
+            updates.put_nowait(data.monitored_item.Value.StatusCode)
+
+    sub = await client.create_subscription(50, Handler())
+    await sub.subscribe_data_change(node(client, "Readers/line_1/Red/item/iron-plate"))
+    assert (await asyncio.wait_for(updates.get(), 3)).is_good()
+    world.remove("line_1")
+    status = await asyncio.wait_for(updates.get(), 3)
+    assert status.value == ua.StatusCodes.BadNodeIdUnknown
+
+
+async def test_rename_moves_values_to_new_nodes(client, world):
+    await eventually(lambda: value(client, "Writers/press/Signals/virtual/signal-B"))
+    values = world.writers["press"]
+    world.remove("press")
+    world.add("writer", "press_renamed")
+    world.writers["press_renamed"] = values
+
+    async def moved():
+        assert await value(client, "Writers/press_renamed/Signals/virtual/signal-B") == 3
+        with pytest.raises(ua.UaStatusCodeError):
+            await value(client, "Writers/press/Signals/virtual/signal-B")
+
+    await eventually(moved)

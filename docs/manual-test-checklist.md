@@ -55,3 +55,15 @@ login. Building entities needs a game client connected to the server, or
       reader node is refused.
 - [x] Stopping the Factorio server makes values go Uncertain and Connected
       false; starting it again brings them back to Good.
+
+## Model changes in a client (milestone 4)
+
+- [ ] Renaming a tag in game: the old node goes Bad (`BadNodeIdUnknown`) in
+      the Data Access view, and the new name appears under Readers/Writers.
+      Note whether your client refreshes the tree by itself (from the model
+      change event) or needs a manual refresh.
+- [ ] Mining a reader that you're monitoring: its items go Bad, and the tag
+      disappears from the tree.
+- [ ] In UaExpert's Event View, add the Server object with event type
+      GeneralModelChangeEventType, then place a new writer in game: one event
+      appears listing the new node.

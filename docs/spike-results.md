@@ -77,3 +77,20 @@ and request parsing must assume input can be malformed.
   `docker/server-settings.dev.json` uses LAN-only visibility and
   `require_user_verification: false`. Real deployments can use normal
   settings.
+
+## Milestone 4: delta polling (`/opc_poll`)
+
+Measured on 2026-10-17 on the dev server with 400 tags (200 writers, each
+wired to a reader, 5 signals each), 20 samples:
+
+| Request | Reply size | Round-trip |
+|---|---|---|
+| `/opc_snapshot` (all values) | 50,454 bytes | 37.5 ms |
+| `/opc_poll`, full | 55,533 bytes | — |
+| `/opc_poll`, nothing changed | 136 bytes | 16.8 ms (one tick) |
+| `/opc_poll`, 10 writers changed | 1,105 bytes | — |
+
+At this size a full read takes longer than one tick to build and encode,
+and a quiet delta does not. Deltas still read every network in Lua; the
+saving is in diffing instead of encoding and sending. The UPS impact of
+reading many networks is still measured in milestone 5.

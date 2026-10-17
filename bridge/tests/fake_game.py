@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from factorio_opc.game import GameError, Hello, ReaderValues, Snapshot, Tag
+from factorio_opc.game import GameError, Hello, Poll, ReaderValues, Snapshot, Tag
 from factorio_opc.rcon import RconError
 
 
@@ -19,6 +19,8 @@ class FakeWorld:
         self.reachable = True
         self.reject_writes: str | None = None
         self.connections = 0
+        self.polls: list[Poll] = []          # every poll reply, for assertions
+        self.sessions: dict[str, dict] = {}  # session -> {"seq": int, "values": snapshot-shaped dict}
         self._unit = 0
 
     def add(self, kind: str, name: str) -> None:
@@ -38,6 +40,12 @@ class FakeWorld:
 
     def set_reader(self, name: str, red: dict[str, int] | None = None, green: dict[str, int] | None = None) -> None:
         self.readers[name] = ReaderValues(red=red or {}, green=green or {})
+
+
+def _diff(prev: dict[str, int], cur: dict[str, int]) -> dict[str, int]:
+    changes = {k: v for k, v in cur.items() if prev.get(k) != v}
+    changes.update({k: 0 for k in prev if k not in cur})
+    return changes
 
 
 class FakeGame:
@@ -74,6 +82,43 @@ class FakeGame:
         return Snapshot(tick=self.world.tick, model_version=self.world.model_version,
                         readers=dict(self.world.readers),
                         writers={k: dict(v) for k, v in self.world.writers.items()})
+
+    async def poll(self, session: str, ack: int | None, full: bool = False) -> Poll:
+        """Same semantics as the mod's lib/poll.lua."""
+        self._check()
+        w = self.world
+        current = {"readers": {k: ReaderValues(dict(v.red), dict(v.green)) for k, v in w.readers.items()},
+                   "writers": {k: dict(v) for k, v in w.writers.items()}}
+        s = w.sessions.get(session)
+        full = full or s is None or ack != s["seq"]
+        if s is None:
+            s = w.sessions[session] = {"seq": 0}
+        if full:
+            readers, writers, removed = current["readers"], current["writers"], []
+        else:
+            prev = s["values"]
+            readers, writers = {}, {}
+            for name, r in current["readers"].items():
+                p = prev["readers"].get(name)
+                if p is None:
+                    readers[name] = r
+                else:
+                    red, green = _diff(p.red, r.red), _diff(p.green, r.green)
+                    if red or green:
+                        readers[name] = ReaderValues(red, green)
+            for name, v in current["writers"].items():
+                p = prev["writers"].get(name)
+                if p is None:
+                    writers[name] = v
+                elif d := _diff(p, v):
+                    writers[name] = d
+            removed = sorted(n for kind in ("readers", "writers") for n in prev[kind] if n not in current[kind])
+        s["values"] = current
+        s["seq"] += 1
+        reply = Poll(seq=s["seq"], full=full, tick=w.tick, tick_paused=False, speed=1.0,
+                     model_version=w.model_version, readers=readers, writers=writers, removed=removed)
+        w.polls.append(reply)
+        return reply
 
     async def write(self, tag: str, signals: dict[str, int], mode: str = "merge") -> dict[str, int]:
         self._check()

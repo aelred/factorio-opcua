@@ -40,3 +40,14 @@ def test_parse_snapshot_with_empty_tables():
 def test_parse_snapshot_rejects_wrong_shapes():
     with pytest.raises(GameError):
         parse_snapshot({"tick": 1, "model_version": 0, "readers": [1], "writers": {}, "ok": True})
+
+
+def test_parse_poll_delta_with_empty_tables():
+    from factorio_opc.game import parse_poll
+
+    poll = parse_poll(parse_reply(
+        '{"seq":4,"full":false,"tick":10,"tick_paused":false,"speed":1,"model_version":2,'
+        '"readers":{"r":{"red":{"item/iron-plate":0},"green":{}}},"writers":{},"removed":{},"ok":true}'))
+    assert poll.seq == 4 and poll.full is False
+    assert poll.readers["r"].red == {"item/iron-plate": 0} and poll.readers["r"].green == {}
+    assert poll.writers == {} and poll.removed == []
