@@ -104,7 +104,6 @@ shows how to call methods from it and from the command line.
 | [docs/security.md](docs/security.md) | Endpoints, certificates, users and roles, audit log |
 | [docs/docker.md](docs/docker.md) | Running Factorio and the bridge with Docker |
 | [docs/protocol.md](docs/protocol.md) | The mod's RCON commands |
-| [docs/releasing.md](docs/releasing.md) | How releases are made |
 | [CHANGELOG.md](CHANGELOG.md) | Changes per version |
 
 ## Development

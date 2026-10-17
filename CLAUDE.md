@@ -2,7 +2,7 @@
 
 Factorio 2.0 mod (`mod/opc-io`, Lua) and Python OPC UA bridge (`bridge/`, asyncua) talking over RCON.
 The RCON protocol is in docs/protocol.md, the OPC address space in docs/address-space.md,
-security in docs/security.md, Docker in docs/docker.md and releases in docs/releasing.md.
+security in docs/security.md and Docker in docs/docker.md. Releases are made by .github/workflows/release.yml.
 
 ## Working on it
 - Tests: `.venv/bin/pytest`. Integration tests in `mod/tests/integration` need the dev server
@@ -14,7 +14,7 @@ security in docs/security.md, Docker in docs/docker.md and releases in docs/rele
   certificate is written to ~/.factorio-opc.
 - The mod and bridge share one version (info.json, bridge/pyproject.toml, factorio_opc/__init__.py); bump all three
   together (scripts/check-version.py checks them) and add a CHANGELOG.md section. Bump `api.PROTO` plus `game.PROTO`
-  in the bridge when the RCON protocol changes. Releases: docs/releasing.md (tag vX.Y.Z; don't tag without asking).
+  in the bridge when the RCON protocol changes. Releases: push a vX.Y.Z tag (don't tag without asking).
 - bridge/LICENSE is a copy of LICENSE (CI compares them).
 
 ## Manual checks

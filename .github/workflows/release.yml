@@ -1,8 +1,10 @@
 name: Release
 
-# Push a tag like v0.6.0 (matching mod/opc-io/info.json and bridge/pyproject.toml)
-# to build the mod zip and the bridge packages and publish a GitHub release.
-# See docs/releasing.md.
+# Push a tag like v0.6.0 to build the mod zip and the bridge packages and
+# publish a GitHub release. Before tagging:
+# - set the version in mod/opc-io/info.json, bridge/pyproject.toml and
+#   bridge/factorio_opc/__init__.py (scripts/check-version.py checks them);
+# - add a "## X.Y.Z" section to CHANGELOG.md, which becomes the release notes.
 on:
   push:
     tags: ["v*"]
