@@ -33,7 +33,7 @@ mode is convenient).
 
 Last full pass: 2026-10-16, opc-io 0.2.0, all items passed.
 
-## Bridge in UaExpert (or another OPC UA client)
+## Bridge in an OPC UA client (UaExpert, or FreeOpcUa `opcua-client` on macOS)
 
 Setup: `scripts/dev-server.sh up` (or your own server with RCON), then
 `factorio-opc --rcon-password-file .dev/factorio/config/rconpw` (or
