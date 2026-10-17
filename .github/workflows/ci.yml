@@ -36,9 +36,7 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - name: Start Factorio with opc-io (waits until healthy)
         run: scripts/dev-server.sh up
-      - run: pytest mod/tests/integration
-        env:
-          FACTORIO_REQUIRE_SERVER: "1"   # fail rather than skip if the server isn't reachable
+      - run: pytest mod/tests/integration   # fails rather than skips without a server, because CI=true
       - name: Server log
         if: failure()
         run: docker compose -f docker/compose.yml logs

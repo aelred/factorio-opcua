@@ -2,8 +2,8 @@
 
 Uses the dev server by default (scripts/dev-server.sh up). Override with
 FACTORIO_RCON_HOST, FACTORIO_RCON_PORT and FACTORIO_RCON_PASSWORD.
-Tests are skipped when no server is reachable, unless FACTORIO_REQUIRE_SERVER=1
-(as in CI), which makes that an error instead.
+Tests are skipped when no server is reachable, except in CI (the CI variable
+that GitHub Actions and most CI systems set), where that is an error instead.
 """
 
 import asyncio
@@ -113,7 +113,7 @@ async def rcon():
     password = os.environ.get("FACTORIO_RCON_PASSWORD")
     if password is None and PASSWORD_FILE.exists():
         password = PASSWORD_FILE.read_text().strip()
-    unavailable = pytest.fail if os.environ.get("FACTORIO_REQUIRE_SERVER") == "1" else pytest.skip
+    unavailable = pytest.fail if os.environ.get("CI", "").lower() in ("true", "1") else pytest.skip
     if password is None:
         unavailable("no RCON password (start scripts/dev-server.sh or set FACTORIO_RCON_PASSWORD)")
     client = RconClient(host, port, password, timeout=10)
