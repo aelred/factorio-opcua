@@ -140,25 +140,25 @@ password_hash = "scrypt$..."   # your hash
 role = "write"
 ```
 
-- [ ] Connecting with no login works, and values can be read and
+- [x] Connecting with no login works, and values can be read and
       subscribed. Writing a writer signal's Value in the Attributes pane
       fails, and calling `SetSignals` fails with `BadUserAccessDenied`.
-- [ ] Connecting with **Username** `operator` and your password allows the
+- [x] Connecting with **Username** `operator` and your password allows the
       write and the method call. A wrong password refuses the connection.
-- [ ] Encrypted connection: in the Connect dialog choose
+- [x] Encrypted connection: in the Connect dialog choose
       **SignAndEncrypt**, try both endpoints (Basic256Sha256 and
       Aes256_Sha256_RsaPss), and log in as operator. On first use,
       opcua-client may ask you to trust the bridge's certificate. The
       connection works, and so do writes.
-- [ ] The bridge's log shows a line like
+- [x] The bridge's log shows a line like
       `write press {"virtual/signal-A": 5} by operator` for each write.
       With `--log-format json`, the same line is JSON with `user` and
       `result` fields.
-- [ ] Under `Objects/Factorio/Status`, the new counters move as you'd
+- [x] Under `Objects/Factorio/Status`, the new counters move as you'd
       expect: Polls rises steadily, Writes and WriteErrors count your
       writes, Tags and SignalNodes match the tree, and Reconnects
       increases after you stop and start the Factorio server.
-- [ ] Network safety check: add `endpoint = "opc.tcp://0.0.0.0:4840/factorio-opc/"`
+- [x] Network safety check: add `endpoint = "opc.tcp://0.0.0.0:4840/factorio-opc/"`
       under `[opcua]` in that config (`0.0.0.0` means "reachable from other
       machines", while `127.0.0.1` means this computer only). With
       `security` still including "none" and `anonymous = "read"`, running
