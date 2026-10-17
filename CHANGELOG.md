@@ -4,7 +4,7 @@ The mod (opc-io) and the bridge (factorio-opc) share one version number.
 
 ## 0.6.0
 
-First packaged release.
+First release.
 
 **Mod (opc-io), RCON protocol 1:**
 - **Entities:** OPC Writer and OPC Reader combinators, unlocked by Circuit
@@ -16,7 +16,6 @@ First packaged release.
   returns only changes after a session's first poll, and `/opc_write`. Errors come back
   as JSON and never stop the server.
 - **Quality:** quality signals are supported with Space Age.
-- **Performance:** a 500-pair poll takes about 11 ms.
 
 **Bridge (factorio-opc):**
 - **Address space:** an OPC UA server with readers (Red/Green/Total), writers
@@ -30,7 +29,6 @@ First packaged release.
   certificate, users with read or write roles, and a refusal to expose
   unencrypted anonymous access to the network.
 - **Logging:** a write audit log, and JSON logs.
-- **Commands:** `factorio-opc hash-password` and
-  `factorio-opc make-client-cert`.
+- **Commands:** `factorio-opc hash-password`.
 - **Docker:** a Docker image, and `deploy/compose.yml` running Factorio with
   the bridge.

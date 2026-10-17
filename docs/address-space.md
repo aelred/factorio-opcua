@@ -11,7 +11,7 @@ so clients can address nodes directly, for example
 ```
 Objects/Factorio/
   Status/
-    Connected          Boolean   true while the bridge is connected and synced
+    Connected          Boolean   true while the bridge is connected to the game
     GameTick           UInt64
     TickPaused         Boolean
     GameSpeed          Double
@@ -93,27 +93,10 @@ returns the writer's full new output as JSON.
 
 ## Calling the methods from common tools
 
-**FreeOpcUa `opcua-client`** (a GUI built on asyncua, works on macOS,
-Linux and Windows, no sign-in) is the easiest client to recommend. It can
-browse, subscribe, write, and call methods, giving each argument its own
-field, so JSON with several signals works. To install and start it:
-```sh
-uv tool install --python 3.14 "opcua-client==1.0.1"   # uv fetches Python 3.14 if needed
-# or, with a Python 3.14 environment active: python3 -m pip install "opcua-client==1.0.1"
-opcua-client
-```
-Use **1.0.1** for now:
-- 0.9.99 and later need Python 3.14. On an older Python, pip quietly
-  installs 0.8.4 (2022). Its certificate dialog crashes, and it can't use
-  the Aes256 policy.
-- 1.0.2 broke right-click **Call**
-  (`AttributeError: 'TreeWidget' object has no attribute 'get_parent_node'`).
-  The repository's code was still broken as of 2026-10-18.
-
-Connect to `opc.tcp://127.0.0.1:4840/factorio-opc/`, then right-click
-`SetSignals` and choose **Call**. Checked with opcua-client 1.0.1 (and,
-earlier, 0.8.4), through the main window's Call action: one call set two
-signals.
+**FreeOpcUa `opcua-client`** 1.0.1 (see the
+[README](../README.md#a-desktop-opc-ua-client) for installing it) gives each
+method argument its own field, so JSON with several signals works.
+Right-click `SetSignals` and choose **Call**.
 
 **asyncua's `uacall`** is installed alongside the bridge. Prefix the method
 name with the namespace index (`2:`), or you'll get `BadNoMatch`:

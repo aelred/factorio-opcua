@@ -89,12 +89,12 @@ expose unencrypted anonymous access to the network.
 ### A desktop OPC UA client
 
 FreeOpcUa's **opcua-client** works on macOS, Linux and Windows, with no
-account needed. Use version 1.0.1:
+account needed. Use version 1.0.1, which needs Python 3.14:
 ```sh
 uv tool install --python 3.14 "opcua-client==1.0.1"
 ```
-Newer releases need Python 3.14, and on an older Python, pip installs the
-buggy 0.8.4. 1.0.2's Call menu is broken.
+On an older Python, pip installs 0.8.4 instead, whose certificate dialog
+crashes. In 1.0.2, right-click Call crashes.
 [docs/address-space.md](docs/address-space.md#calling-the-methods-from-common-tools)
 shows how to call methods from it and from the command line.
 

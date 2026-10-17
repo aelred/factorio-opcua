@@ -7,7 +7,6 @@ import asyncio
 import getpass
 import logging
 import signal
-import socket
 import sys
 
 from . import __version__
@@ -18,9 +17,7 @@ from .server import Bridge
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(prog="factorio-opc", description="OPC UA server for Factorio circuit networks",
-                                epilog="Other commands: 'factorio-opc hash-password' makes an opcua.users "
-                                       "password_hash; 'factorio-opc make-client-cert DIR' makes a certificate for "
-                                       "a client to connect with encryption.")
+                                epilog="'factorio-opc hash-password' makes a password_hash for opcua.users.")
     p.add_argument("--config", help="TOML config file")
     p.add_argument("--rcon-host")
     p.add_argument("--rcon-port", type=int)
@@ -65,35 +62,10 @@ def hash_password_command() -> int:
     return 0
 
 
-def make_client_cert_command(argv: list[str]) -> int:
-    """Create a certificate and key that an OPC UA client can use for encrypted connections."""
-    from pathlib import Path
-
-    from asyncua.crypto.cert_gen import setup_self_signed_certificate
-    from cryptography.x509.oid import ExtendedKeyUsageOID
-
-    p = argparse.ArgumentParser(prog="factorio-opc make-client-cert",
-                                description="Create a client application certificate (DER) and key (PEM).")
-    p.add_argument("directory", help="where to write client_cert.der and client_key.pem")
-    p.add_argument("--uri", default="urn:freeopcua:client-gui",
-                   help="the client's application URI (default: FreeOpcUa opcua-client's)")
-    args = p.parse_args(argv)
-    folder = Path(args.directory).expanduser()
-    folder.mkdir(parents=True, exist_ok=True)
-    cert, key = folder / "client_cert.der", folder / "client_key.pem"
-    asyncio.run(setup_self_signed_certificate(key, cert, args.uri, socket.gethostname(),
-                                              [ExtendedKeyUsageOID.CLIENT_AUTH], {"commonName": "factorio-opc client"}))
-    key.chmod(0o600)
-    print(f"certificate: {cert}\nprivate key: {key}")
-    return 0
-
-
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["hash-password"]:
         return hash_password_command()
-    if argv[:1] == ["make-client-cert"]:
-        return make_client_cert_command(argv[1:])
     args = parse_args(argv)
     try:
         config = load_config(args.config)

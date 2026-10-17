@@ -22,7 +22,6 @@ class FakeFactorio:
         self.password = password
         self.replies = replies or {}
         self.delays = delays or {}
-        self.received = []
         self.server = None
         self.writers = []
 
@@ -49,7 +48,6 @@ class FakeFactorio:
             while True:
                 request_id, packet_type, body = await read_packet(reader)
                 assert packet_type == SERVERDATA_EXECCOMMAND
-                self.received.append(body)
                 await asyncio.sleep(self.delays.get(body, 0))
                 reply = self.replies.get(body, f"unknown: {body}")
                 writer.write(encode_packet(request_id, SERVERDATA_RESPONSE_VALUE, reply))

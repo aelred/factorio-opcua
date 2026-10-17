@@ -1,7 +1,6 @@
 """OPC UA security: endpoints, certificates, users and roles."""
 
 import asyncio
-import json
 import os
 import stat
 
@@ -18,7 +17,7 @@ from factorio_opc.config import Config, ConfigError, UserConfig, load_config
 from factorio_opc.server import Bridge
 
 from fake_game import FakeGame, FakeWorld
-from test_server import eventually, free_port
+from helpers import eventually, free_port
 
 NS = "urn:factorio-opc"
 USERS = [UserConfig("alice", "write", hash_password("alice-pw")), UserConfig("bob", "read", hash_password("bob-pw"))]
@@ -184,12 +183,6 @@ async def test_certificate_covers_machine_names(tmp_path):
     config.endpoint = "opc.tcp://192.0.2.8:4840/x/"
     await ensure_certificate(config)
     assert cert_file.read_bytes() != before
-
-
-def test_make_client_cert_command(tmp_path, capsys):
-    assert main(["make-client-cert", str(tmp_path / "c")]) == 0
-    assert (tmp_path / "c" / "client_cert.der").is_file()
-    assert stat.S_IMODE(os.stat(tmp_path / "c" / "client_key.pem").st_mode) == 0o600
 
 
 def test_password_hashing():

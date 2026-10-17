@@ -37,6 +37,15 @@ STALE = ua.StatusCode(ua.StatusCodes.UncertainNoCommunicationLastUsableValue)
 
 READER_CHANNELS = ("Red", "Green", "Total")
 
+V = ua.VariantType
+STATUS_TYPES = {
+    "Connected": V.Boolean, "GameTick": V.UInt64, "TickPaused": V.Boolean, "GameSpeed": V.Double,
+    "ModVersion": V.String, "FactorioVersion": V.String, "ModelVersion": V.UInt32, "LastPollLatencyMs": V.Double,
+    # Bridge metrics, see Bridge.metrics.
+    "Polls": V.UInt64, "LatePolls": V.UInt64, "Reconnects": V.UInt32, "Writes": V.UInt64, "WriteErrors": V.UInt64,
+    "Tags": V.UInt32, "SignalNodes": V.UInt32, "ConnectedSince": V.DateTime,
+}
+
 # ModelChangeStructureDataType verbs (OPC UA Part 3, GeneralModelChangeEventType).
 VERB_ADDED = 1 | 4    # NodeAdded | ReferenceAdded
 VERB_DELETED = 2 | 8  # NodeDeleted | ReferenceDeleted
@@ -50,7 +59,10 @@ def wrap_int32(value: int) -> int:
     return (value + 2**31) % 2**32 - 2**31
 
 
-def describe_changes(changes: list[ua.ModelChangeStructureDataType], limit: int = 5) -> str:
+MAX_LISTED_CHANGES = 5
+
+
+def describe_changes(changes: list[ua.ModelChangeStructureDataType]) -> str:
     """Human-readable event message, for clients that only show an event's Message.
 
     E.g. "Added Writers/press_2; removed Writers/press; 1 new signal node".
@@ -60,8 +72,9 @@ def describe_changes(changes: list[ua.ModelChangeStructureDataType], limit: int 
                 if c.Verb == verb and c.AffectedType == ua.NodeId(ua.ObjectIds.BaseObjectType)]
 
     def listing(items: list[str]) -> str:
-        shown = ", ".join(items[:limit])
-        return shown + (f" and {len(items) - limit} more" if len(items) > limit else "")
+        shown = ", ".join(items[:MAX_LISTED_CHANGES])
+        extra = len(items) - MAX_LISTED_CHANGES
+        return shown + (f" and {extra} more" if extra > 0 else "")
 
     parts = []
     if added := names(VERB_ADDED):
@@ -103,7 +116,7 @@ class AddressSpace:
         self._readers: dict[str, tuple[SignalMap, SignalMap]] = {}
         self._writers: dict[str, SignalMap] = {}
         self._pending_changes: list[ua.ModelChangeStructureDataType] = []
-        self._metric_cache: dict[str, object] = {}
+        self._status_values: dict[str, object] = {}
         self._change_generators: list = []
 
     def nodeid(self, path: str) -> ua.NodeId:
@@ -116,27 +129,11 @@ class AddressSpace:
         objects = self._server.nodes.objects
         root = await objects.add_object(self.nodeid("Factorio"), self.qname("Factorio"))
         status = await root.add_object(self.nodeid("Status"), self.qname("Status"))
-        for name, value, vtype in (
-            ("Connected", False, ua.VariantType.Boolean),
-            ("GameTick", 0, ua.VariantType.UInt64),
-            ("TickPaused", False, ua.VariantType.Boolean),
-            ("GameSpeed", 0.0, ua.VariantType.Double),
-            ("ModVersion", "", ua.VariantType.String),
-            ("FactorioVersion", "", ua.VariantType.String),
-            ("ModelVersion", 0, ua.VariantType.UInt32),
-            ("LastPollLatencyMs", 0.0, ua.VariantType.Double),
-            # Bridge metrics, see set_metrics.
-            ("Polls", 0, ua.VariantType.UInt64),
-            ("LatePolls", 0, ua.VariantType.UInt64),
-            ("Reconnects", 0, ua.VariantType.UInt32),
-            ("Writes", 0, ua.VariantType.UInt64),
-            ("WriteErrors", 0, ua.VariantType.UInt64),
-            ("Tags", 0, ua.VariantType.UInt32),
-            ("SignalNodes", 0, ua.VariantType.UInt32),
-            ("ConnectedSince", None, ua.VariantType.DateTime),
-        ):
+        for name, vtype in STATUS_TYPES.items():
+            initial = {ua.VariantType.Boolean: False, ua.VariantType.String: "", ua.VariantType.Double: 0.0,
+                       ua.VariantType.DateTime: None}.get(vtype, 0)
             self._status[name] = await status.add_variable(
-                self.nodeid(f"Status/{name}"), self.qname(name), value, vtype
+                self.nodeid(f"Status/{name}"), self.qname(name), initial, vtype
             )
         self.readers = await root.add_folder(self.nodeid("Readers"), self.qname("Readers"))
         self.writers = await root.add_folder(self.nodeid("Writers"), self.qname("Writers"))
@@ -157,38 +154,23 @@ class AddressSpace:
     # -- status --------------------------------------------------------------
 
     async def set_connected(self, hello: Hello | None) -> None:
-        await self._push(self._status["Connected"], ua.Variant(hello is not None, ua.VariantType.Boolean))
+        await self.set_status(Connected=hello is not None)
         if hello is not None:
-            await self.set_status(hello)
+            await self.set_status(ModVersion=hello.mod_version, FactorioVersion=hello.factorio_version,
+                                  GameTick=hello.tick, TickPaused=hello.tick_paused, GameSpeed=hello.speed,
+                                  ModelVersion=hello.model_version)
 
-    async def set_status(self, hello: Hello, latency_ms: float | None = None) -> None:
-        for name, value, vtype in (
-            ("GameTick", hello.tick, ua.VariantType.UInt64),
-            ("TickPaused", hello.tick_paused, ua.VariantType.Boolean),
-            ("GameSpeed", hello.speed, ua.VariantType.Double),
-            ("ModVersion", hello.mod_version, ua.VariantType.String),
-            ("FactorioVersion", hello.factorio_version, ua.VariantType.String),
-            ("ModelVersion", hello.model_version, ua.VariantType.UInt32),
-        ):
-            await self._push(self._status[name], ua.Variant(value, vtype))
-        if latency_ms is not None:
-            await self._push(self._status["LastPollLatencyMs"], ua.Variant(latency_ms, ua.VariantType.Double))
-
-    METRIC_TYPES = {
-        "Polls": ua.VariantType.UInt64, "LatePolls": ua.VariantType.UInt64, "Reconnects": ua.VariantType.UInt32,
-        "Writes": ua.VariantType.UInt64, "WriteErrors": ua.VariantType.UInt64, "ConnectedSince": ua.VariantType.DateTime,
-    }
+    async def set_status(self, **values: object) -> None:
+        """Push Status/ variables (names from STATUS_TYPES) whose value changed."""
+        for name, value in values.items():
+            if self._status_values.get(name) != value:
+                self._status_values[name] = value
+                await self._push(self._status[name], ua.Variant(value, STATUS_TYPES[name]))
 
     async def set_metrics(self, metrics: dict) -> None:
-        """Push bridge counters (see METRIC_TYPES) plus the current tag and signal-node counts."""
-        values = dict(metrics)
-        values["Tags"] = len(self.tags)
-        values["SignalNodes"] = sum(len(t.signals) for t in self.tags.values())
-        types = {**self.METRIC_TYPES, "Tags": ua.VariantType.UInt32, "SignalNodes": ua.VariantType.UInt32}
-        for name, value in values.items():
-            if name in types and self._metric_cache.get(name) != value:
-                self._metric_cache[name] = value
-                await self._push(self._status[name], ua.Variant(value, types[name]))
+        """Push the bridge's counters plus the current tag and signal-node counts."""
+        await self.set_status(**metrics, Tags=len(self.tags),
+                              SignalNodes=sum(len(t.signals) for t in self.tags.values()))
 
     # -- tags ----------------------------------------------------------------
 
@@ -321,10 +303,10 @@ class AddressSpace:
         for key in sorted(keys):
             await self._set_signal(nodes, "Signals", key, values.get(key, 0), when)
 
-    async def apply_writer(self, name: str, values: SignalMap, when: datetime | None = None) -> None:
+    async def apply_writer(self, name: str, values: SignalMap) -> None:
         """A writer's full output (e.g. from a write reply)."""
         self._writers[name] = dict(values)
-        await self._update_writer(name, None, when or now())
+        await self._update_writer(name, None, now())
 
     async def _replace_all(self, readers: dict[str, ReaderValues], writers: dict[str, SignalMap],
                            when: datetime) -> None:

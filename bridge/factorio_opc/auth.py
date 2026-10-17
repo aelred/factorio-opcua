@@ -21,9 +21,9 @@ def _b64(data: bytes) -> str:
     return base64.b64encode(data).decode()
 
 
-def hash_password(password: str, salt: bytes | None = None) -> str:
+def hash_password(password: str) -> str:
     """Encode as scrypt$N$r$p$salt$hash (base64), for opcua.users.password_hash."""
-    salt = salt or os.urandom(16)
+    salt = os.urandom(16)
     digest = hashlib.scrypt(password.encode(), salt=salt, n=SCRYPT_N, r=SCRYPT_R, p=SCRYPT_P, dklen=32)
     return f"scrypt${SCRYPT_N}${SCRYPT_R}${SCRYPT_P}${_b64(salt)}${_b64(digest)}"
 

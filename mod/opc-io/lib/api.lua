@@ -48,11 +48,6 @@ local function decode(parameter)
   return request
 end
 
-local function network_values(entity, wire)
-  local network = entity.get_circuit_network(wire)
-  return signals.from_network(network and network.signals)
-end
-
 -- Writers re-read per poll to catch changes made outside the mod: 1/20 of
 -- them, so all are checked about every 2 seconds at 10 polls per second.
 local AUDIT_FRACTION = 20
@@ -82,7 +77,7 @@ local function read_all()
           green = read(entry.entity, defines.wire_connector_id.circuit_green),
         }
       else
-        writers[entry.name] = registry.copy(registry.writer_values(entry))
+        writers[entry.name] = registry.copy(entry.values)
         writer_count = writer_count + 1
       end
     end
@@ -111,17 +106,15 @@ function handlers.opc_browse()
   local tags = {}
   for _, entry in ipairs(registry.entries()) do
     local e = entry.entity
-    if not e.valid then
-      goto continue
+    if e.valid then
+      tags[#tags + 1] = {
+        name = entry.name,
+        kind = entry.kind,
+        unit = entry.unit,
+        surface = e.surface.name,
+        position = { x = e.position.x, y = e.position.y },
+      }
     end
-    tags[#tags + 1] = {
-      name = entry.name,
-      kind = entry.kind,
-      unit = entry.unit,
-      surface = e.surface.name,
-      position = { x = e.position.x, y = e.position.y },
-    }
-    ::continue::
   end
   return { tick = game.tick, model_version = registry.model_version(), tags = tags }
 end
@@ -164,7 +157,7 @@ function handlers.opc_write(cmd)
   if not updates then
     fail(err)
   end
-  local values = signals.apply(registry.writer_values(entry), updates, mode)
+  local values = signals.apply(entry.values, updates, mode)
   local count = 0
   for _ in pairs(values) do
     count = count + 1

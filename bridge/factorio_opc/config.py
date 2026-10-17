@@ -38,7 +38,8 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 MIN_POLL_HZ = 1.0
-# RCON commands run once per tick, so a sequential poll tops out near 30 Hz.
+# A poll's RCON round trip takes about one game tick (16.7 ms); at 30 Hz some
+# polls already start late.
 MAX_POLL_HZ = 30.0
 
 SECURITY_MODES = ("none", "sign", "sign_encrypt")
@@ -148,7 +149,7 @@ def read_password_file(path: str | Path, base: Path | None = None) -> str:
         raise ConfigError(f"cannot read RCON password file {path}: {exc}") from None
 
 
-def _parse_users(raw: list, base: Path) -> list[UserConfig]:
+def _parse_users(raw: list) -> list[UserConfig]:
     from .auth import hash_password  # imported lazily: only needed for plain-text passwords
 
     users, seen = [], set()
@@ -207,7 +208,7 @@ def load_config(path: str | Path | None = None, env: dict[str, str] | None = Non
                 if key == "rcon_password_file":
                     config.rcon_password = read_password_file(value, base)
                 elif key == "users":
-                    config.users = _parse_users(value, base)
+                    config.users = _parse_users(value)
                 elif key == "security":
                     if not all(isinstance(m, str) for m in value):
                         raise ConfigError("opcua.security must be a list of strings")

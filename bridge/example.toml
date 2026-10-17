@@ -1,11 +1,11 @@
-# Example factorio-opc bridge config. Run: factorio-opc --config bridge/example.toml
+# Example factorio-opc bridge config. Copy and edit it, then run: factorio-opc --config <file>
 # Every key is optional except the RCON password (or FACTORIO_RCON_PASSWORD).
 
 [factorio]
 rcon_host = "127.0.0.1"
 rcon_port = 27015
 # Relative paths are resolved from this file's folder.
-rcon_password_file = "../.dev/factorio/config/rconpw"
+rcon_password_file = "rconpw"
 rcon_timeout = 5.0
 
 [opcua]
@@ -27,7 +27,7 @@ anonymous = "write"
 # role = "write"     # or "read"
 
 [bridge]
-# Game polls per second, 1-30. RCON round-trips take one tick (~16.7 ms).
+# Game polls per second, 1-30. Each poll's round trip takes about one game tick.
 poll_hz = 10
 # text, or json for one JSON object per line (log collectors)
 log_format = "text"

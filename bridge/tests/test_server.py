@@ -2,7 +2,6 @@
 
 import asyncio
 import json
-import socket
 
 import pytest
 from asyncua import Client, ua
@@ -12,26 +11,9 @@ from factorio_opc.config import Config
 from factorio_opc.server import Bridge
 
 from fake_game import FakeGame, FakeWorld
+from helpers import eventually, free_port
 
 NS = "urn:factorio-opc"
-
-
-def free_port() -> int:
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
-
-
-async def eventually(check, timeout: float = 3.0):
-    """Retry an async check until it stops failing (assertion or bad OPC status)."""
-    deadline = asyncio.get_running_loop().time() + timeout
-    while True:
-        try:
-            return await check()
-        except (AssertionError, ua.UaStatusCodeError):
-            if asyncio.get_running_loop().time() > deadline:
-                raise
-            await asyncio.sleep(0.05)
 
 
 @pytest.fixture
@@ -357,7 +339,7 @@ def test_model_change_message_names_tags():
     message = describe_changes([change("Writers/press_2", tag, VERB_ADDED), change("Writers/press", tag, VERB_DELETED),
                                 change("Writers/press_2/Signals/item/iron-plate", var, VERB_ADDED)])
     assert message == "Added Writers/press_2; removed Writers/press; 1 new signal node"
-    many = describe_changes([change(f"Readers/r{i}", tag, VERB_ADDED) for i in range(7)], limit=5)
+    many = describe_changes([change(f"Readers/r{i}", tag, VERB_ADDED) for i in range(7)])
     assert many == "Added Readers/r0, Readers/r1, Readers/r2, Readers/r3, Readers/r4 and 2 more"
 
 
@@ -412,17 +394,17 @@ async def test_metrics(client, world):
 
     await eventually(counted)
     world.reachable = False
-    await eventually(lambda: _assert_value(client, "Status/Connected", False))
+
+    async def disconnected():
+        assert await value(client, "Status/Connected") is False
+
+    await eventually(disconnected)
     world.reachable = True
 
     async def reconnected():
         assert await value(client, "Status/Reconnects") == 1
 
     await eventually(reconnected)
-
-
-async def _assert_value(client, path, expected):
-    assert await value(client, path) == expected
 
 
 async def test_writes_are_audit_logged(client, world, caplog):

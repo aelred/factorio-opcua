@@ -4,7 +4,7 @@ OPC UA server for Factorio 2.0 circuit networks. It talks over RCON to the
 **opc-io** mod, which adds OPC Reader and OPC Writer combinators to the game.
 
 ```sh
-pip install factorio-opc-<version>-py3-none-any.whl   # from a GitHub release
+pip install factorio_opc-<version>-py3-none-any.whl   # from a GitHub release
 FACTORIO_RCON_PASSWORD=<pw> factorio-opc --rcon-host <server>
 ```
 

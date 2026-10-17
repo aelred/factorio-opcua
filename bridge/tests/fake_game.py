@@ -77,14 +77,14 @@ class FakeGame:
         self._check()
         return sorted(self.world.tags.values(), key=lambda t: t.name)
 
-    async def poll(self, session: str, ack: int | None, full: bool = False) -> Poll:
+    async def poll(self, session: str, ack: int | None) -> Poll:
         """Same semantics as the mod's lib/poll.lua."""
         self._check()
         w = self.world
         current = {"readers": {k: ReaderValues(dict(v.red), dict(v.green)) for k, v in w.readers.items()},
                    "writers": {k: dict(v) for k, v in w.writers.items()}}
         s = w.sessions.get(session)
-        full = full or s is None or ack != s["seq"]
+        full = s is None or ack != s["seq"]
         if s is None:
             s = w.sessions[session] = {"seq": 0}
         if full:

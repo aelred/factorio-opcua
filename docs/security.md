@@ -105,9 +105,8 @@ server, or on a private network, and don't expose the RCON port.
 
 ## Connecting with opcua-client (encrypted, with a login)
 
-These steps are for opcua-client **1.0.1**, which needs Python 3.14
-(`uv tool install --python 3.14 "opcua-client==1.0.1"`). Avoid 1.0.2: its
-right-click Call crashes.
+These steps are for opcua-client 1.0.1 (see the
+[README](../README.md#a-desktop-opc-ua-client) for installing it).
 
 0. Once: open **Settings → Client Application Certificate**, press
    **Generate self-signed certificate**, then OK. This is opcua-client's own
@@ -117,12 +116,3 @@ right-click Call crashes.
    endpoint. Basic256Sha256 and Aes256_Sha256_RsaPss both work.
 3. Choose **Username**, then enter the user and password.
 4. Press **Connect**.
-
-Checked with opcua-client 1.0.1 under Python 3.14, using its own menu
-actions: it generated a certificate, connected with Aes256_Sha256_RsaPss and
-SignAndEncrypt as a write user, and set two signals with one right-click
-Call of `SetSignals`.
-
-On Python 3.13 and older, pip installs opcua-client 0.8.4 instead. That
-version's certificate dialog crashes and it can't use the Aes256 policy,
-so use 1.0.1.

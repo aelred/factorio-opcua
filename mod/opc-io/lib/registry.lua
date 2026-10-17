@@ -1,10 +1,11 @@
 -- Registry of OPC Reader/Writer entities, keyed by unit number and by tag name.
 -- Lives in storage.opc so it is saved with the map:
---   by_unit[unit_number] = { entity, unit, kind, name }
+--   by_unit[unit_number] = { entity, unit, kind, name, values }  (values: a writer's cached output)
 --   by_name[name]        = same entry
 --   model_version        bumped on every add, remove or rename
 --   next_index[kind]     counter for default names ("reader-1", ...)
 --   sessions             bridge poll sessions (lib/poll.lua)
+--   audit_index          round-robin position of audit_writers
 
 local names = require("lib.names")
 local signals = require("lib.signals")
@@ -21,8 +22,8 @@ function registry.init()
   s.by_name = s.by_name or {}
   s.model_version = s.model_version or 0
   s.next_index = s.next_index or { reader = 1, writer = 1 }
-  s.sessions = s.sessions or {} -- bridge poll sessions, see lib/poll.lua
-  s.audit_index = s.audit_index or 0 -- round-robin position of audit_writers
+  s.sessions = s.sessions or {}
+  s.audit_index = s.audit_index or 0
 end
 
 function registry.sessions()
@@ -53,11 +54,10 @@ function registry.get_by_unit(unit)
   return state().by_unit[unit]
 end
 
--- Entries with valid entities, sorted by name for deterministic output.
--- All entries sorted by name, rebuilt only when model_version changes (every
--- add, remove and rename bumps it). A plain local is fine as a cache: it only
--- speeds up producing the same result, which comes from storage.
--- Callers must skip entries whose entity is no longer valid.
+-- All entries sorted by name, cached until model_version changes. A plain
+-- local is fine as a cache: it only speeds up producing the same result,
+-- which comes from storage. Callers must skip entries whose entity is no
+-- longer valid.
 local sorted_entries, sorted_version
 
 function registry.entries()
@@ -86,20 +86,6 @@ local function copy(map)
 end
 registry.copy = copy
 
-local function same(a, b)
-  for k, v in pairs(a) do
-    if b[k] ~= v then
-      return false
-    end
-  end
-  for k in pairs(b) do
-    if a[k] == nil then
-      return false
-    end
-  end
-  return true
-end
-
 -- A writer's actual output, read from its sections. Comparatively expensive.
 function registry.read_writer(entity)
   local cb = control(entity)
@@ -113,14 +99,8 @@ function registry.read_writer(entity)
   return map
 end
 
--- A writer's output as cached in its entry (kept in storage; set by normalize
--- when the writer is registered). The mod is the only thing that changes
--- writer output (its GUI replaces the combinator's, and pastes are
--- normalized), and audit_writers catches anything else.
-function registry.writer_values(entry)
-  return entry.values
-end
-
+-- Writers' output is cached in entry.values: the mod is the only thing that
+-- changes it (pastes are normalized), and audit_writers catches anything else.
 function registry.set_writer_values(entry, map)
   control(entry.entity).get_section(1).filters = signals.to_filters(map)
   entry.values = copy(map)
@@ -142,10 +122,7 @@ function registry.audit_writers(count)
   for _ = 1, math.min(count, #writers) do
     s.audit_index = s.audit_index % #writers + 1
     local entry = writers[s.audit_index]
-    local actual = registry.read_writer(entry.entity)
-    if not same(actual, entry.values) then
-      entry.values = actual
-    end
+    entry.values = registry.read_writer(entry.entity)
   end
 end
 

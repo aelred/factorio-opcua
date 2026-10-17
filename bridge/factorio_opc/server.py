@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import contextvars
-import dataclasses
 import ipaddress
 import json
 import logging
@@ -27,7 +26,7 @@ from cryptography.x509.oid import ExtendedKeyUsageOID
 from .auth import Ruleset, UserManager
 
 from .config import Config
-from .game import GameApi, GameError, Hello, RconGame
+from .game import GameApi, GameError, RconGame
 from .model import NAMESPACE_URI, AddressSpace, now
 from .rcon import RconError
 
@@ -54,7 +53,8 @@ def status(code: int) -> ua.StatusCode:
 
 
 def signal_value(variant: ua.Variant | None) -> int | None:
-    """Accept any numeric variant holding an int32-range integer (clients differ in what they send)."""
+    """The whole number held by any numeric variant, else None. Clients differ in the type they send;
+    the int32 range is checked by the caller."""
     if variant is None or variant.VariantType not in NUMERIC_TYPES or isinstance(variant.Value, list):
         return None
     value = variant.Value
@@ -148,7 +148,7 @@ class Bridge:
         self._model_version: int | None = None
         self._task: asyncio.Task | None = None
         self._original_write = None
-        # Counters published under Status/ (see AddressSpace.set_metrics).
+        # Counters published under Status/ (see model.STATUS_TYPES).
         self.metrics: dict = {"Polls": 0, "LatePolls": 0, "Reconnects": 0, "Writes": 0, "WriteErrors": 0,
                               "ConnectedSince": None}
         self._ever_connected = False
@@ -236,27 +236,20 @@ class Bridge:
                 self.metrics["ConnectedSince"] = now()
                 await self.model.set_connected(hello)
                 backoff = BACKOFF_START
-                await self._poll(game, hello)
-            except (RconError, GameError, OSError, asyncio.TimeoutError) as exc:
-                was_connected = self.game is not None
-                await self._disconnect()
-                await self.model.mark_stale()
-                if was_connected:
+                await self._poll(game)
+            except Exception as exc:  # CancelledError is not an Exception, so stop() still works
+                if not isinstance(exc, (RconError, GameError, OSError, asyncio.TimeoutError)):
+                    log.exception("unexpected error in game loop; reconnecting")
+                elif self.game is not None:
                     log.warning("lost connection to Factorio at %s: %s", rcon, exc)
                 else:
                     log.info("cannot reach Factorio at %s (%s); retrying in %.0fs", rcon, exc, backoff)
-                await asyncio.sleep(backoff)
-                backoff = min(backoff * 2, BACKOFF_MAX)
-            except asyncio.CancelledError:
-                raise
-            except Exception:
-                log.exception("unexpected error in game loop; reconnecting")
                 await self._disconnect()
                 await self.model.mark_stale()
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, BACKOFF_MAX)
 
-    async def _poll(self, game: GameApi, hello: Hello) -> None:
+    async def _poll(self, game: GameApi) -> None:
         """Poll changes until the connection fails.
 
         Each connection is a new poll session, so its first reply is full; after
@@ -278,9 +271,8 @@ class Bridge:
                 self._model_version = poll.model_version
             await self.model.apply_poll(poll, received)
             ack = poll.seq
-            hello = dataclasses.replace(hello, tick=poll.tick, tick_paused=poll.tick_paused, speed=poll.speed,
-                                        model_version=poll.model_version)
-            await self.model.set_status(hello, latency_ms)
+            await self.model.set_status(GameTick=poll.tick, TickPaused=poll.tick_paused, GameSpeed=poll.speed,
+                                        ModelVersion=poll.model_version, LastPollLatencyMs=latency_ms)
             await self.model.emit_model_changes()
             self.metrics["Polls"] += 1
             await self.model.set_metrics(self.metrics)

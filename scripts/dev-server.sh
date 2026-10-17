@@ -17,11 +17,8 @@ if [[ -n "${FACTORIO_ADMINS:-}" ]]; then
     "$FACTORIO_ADMINS" > "$data/config/server-adminlist.json"
 fi
 
-# Server settings: LAN-only, no account check. Override with SERVER_SETTINGS=path.
-SERVER_SETTINGS="${SERVER_SETTINGS:-docker/server-settings.dev.json}"
-if [[ -n "$SERVER_SETTINGS" ]]; then
-  cp "$SERVER_SETTINGS" "$data/config/server-settings.json"
-fi
+# Server settings: LAN-only, no account check.
+cp docker/server-settings.dev.json "$data/config/server-settings.json"
 
 compose=(docker compose -f docker/compose.yml)
 case "${1:-up}" in
