@@ -1,0 +1,32 @@
+name: Release
+
+# Push a tag like v0.6.0 (matching mod/opc-io/info.json and bridge/pyproject.toml)
+# to build the mod zip and the bridge packages and publish a GitHub release.
+# See docs/releasing.md.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Tag matches the mod and bridge versions
+        run: python scripts/check-version.py "$GITHUB_REF_NAME"
+      - run: pip install -r requirements-dev.txt build
+      - run: pytest -m "not integration"
+      - run: scripts/package-mod.sh
+      - run: python -m build bridge --outdir dist
+      - name: Release notes from CHANGELOG.md
+        run: python scripts/changelog-section.py "${GITHUB_REF_NAME#v}" > notes.md
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "factorio-opc $GITHUB_REF_NAME" --notes-file notes.md dist/*

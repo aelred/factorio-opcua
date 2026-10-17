@@ -11,8 +11,10 @@ Design and milestones are in PLAN.md, protocol in docs/protocol.md, and the OPC 
   `control.lua`: an uncaught Lua error stops a multiplayer server.
 - Bridge tests and scripts that start a Bridge should pass `security=["none"]` (or a tmp `pki_dir`) so no
   certificate is written to ~/.factorio-opc.
-- Bump `mod/opc-io/info.json` version when control-stage data changes (on_configuration_changed migrates storage),
-  and `api.PROTO` plus `game.PROTO` in the bridge when the RCON protocol changes.
+- The mod and bridge share one version (info.json, bridge/pyproject.toml, factorio_opc/__init__.py); bump all three
+  together (scripts/check-version.py checks them) and add a CHANGELOG.md section. Bump `api.PROTO` plus `game.PROTO`
+  in the bridge when the RCON protocol changes. Releases: docs/releasing.md (tag vX.Y.Z; don't tag without asking).
+- bridge/LICENSE is a copy of LICENSE (CI compares them).
 
 ## Manual checks (docs/manual-test-checklist.md)
 - The user is on macOS and tests with FreeOpcUa **opcua-client 1.0.1** (Python 3.14; not UaExpert; 1.0.2's

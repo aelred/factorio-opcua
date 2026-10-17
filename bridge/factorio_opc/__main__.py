@@ -50,9 +50,13 @@ async def run(bridge: Bridge) -> None:
 def hash_password_command() -> int:
     from .auth import hash_password
 
-    password = getpass.getpass("Password: ")
-    if sys.stdin.isatty() and getpass.getpass("Repeat: ") != password:
-        print("factorio-opc: passwords differ", file=sys.stderr)
+    try:
+        password = getpass.getpass("Password: ")
+        if sys.stdin.isatty() and getpass.getpass("Repeat: ") != password:
+            print("factorio-opc: passwords differ", file=sys.stderr)
+            return 1
+    except (EOFError, KeyboardInterrupt):
+        print("\nfactorio-opc: no password entered", file=sys.stderr)
         return 1
     if not password:
         print("factorio-opc: empty password", file=sys.stderr)

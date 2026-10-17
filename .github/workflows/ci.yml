@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    name: Unit tests (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -r requirements-dev.txt
+      - name: Versions agree
+        run: python scripts/check-version.py
+      - name: bridge/LICENSE is a copy of LICENSE
+        run: cmp LICENSE bridge/LICENSE
+      - run: pytest -m "not integration"
+
+  integration:
+    name: Integration tests (Factorio headless)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements-dev.txt
+      - name: Start Factorio with opc-io
+        run: scripts/dev-server.sh up
+      - name: Wait for the server
+        run: python scripts/wait-for-server.py --timeout 300
+      - run: pytest mod/tests/integration
+        env:
+          FACTORIO_REQUIRE_SERVER: "1"   # fail rather than skip if the server isn't reachable
+      - name: Server log
+        if: failure()
+        run: docker compose -f docker/compose.yml logs
+
+  package:
+    name: Build packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install build
+      - run: scripts/package-mod.sh
+      - run: python -m build bridge --outdir dist
+      - name: Bridge Docker image builds
+        run: docker build -t factorio-opc:ci bridge
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: dist/*

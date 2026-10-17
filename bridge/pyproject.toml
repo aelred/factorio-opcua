@@ -1,14 +1,30 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "factorio-opc"
-version = "0.5.0"
-description = "OPC UA server bridging Factorio circuit networks over RCON"
+version = "0.6.0"
+description = "OPC UA server bridging Factorio 2.0 circuit networks over RCON"
+readme = "README.md"
 license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "aelred" }]
 requires-python = ">=3.11"
-dependencies = ["asyncua>=2.1,<3"]
+dependencies = [
+  "asyncua>=2.1,<3",
+  "cryptography>=42",  # imported directly for the server certificate
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Topic :: Games/Entertainment",
+  "Topic :: System :: Networking",
+  "Framework :: AsyncIO",
+]
+
+[project.urls]
+Repository = "https://github.com/aelred/factorio-opc"
+Documentation = "https://github.com/aelred/factorio-opc#readme"
 
 [project.scripts]
 factorio-opc = "factorio_opc.__main__:main"

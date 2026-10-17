@@ -1,0 +1,32 @@
+# Factorio 2.0 headless server + factorio-opc bridge. See docs/docker.md.
+#
+#   1. Put the opc-io mod zip in ./factorio/mods/ (create the folder).
+#   2. docker compose up -d       (first start generates the map and ./factorio/config/)
+#   3. Connect an OPC UA client to opc.tcp://127.0.0.1:4840/factorio-opc/
+services:
+  factorio:
+    image: factoriotools/factorio:2.0.77
+    restart: unless-stopped
+    environment:
+      DLC_SPACE_AGE: "false"     # "true" to run with Space Age
+    ports:
+      - "34197:34197/udp"        # game port for players; RCON stays on the internal network
+    volumes:
+      - ./factorio:/factorio
+
+  bridge:
+    build: ../bridge
+    restart: unless-stopped      # also retries until Factorio has written its RCON password
+    depends_on:
+      - factorio
+    ports:
+      # Published on this machine only. To serve the network, change this to
+      # "4840:4840" AND tighten bridge.toml first (docs/security.md).
+      - "127.0.0.1:4840:4840"
+    volumes:
+      - ./bridge.toml:/config/bridge.toml:ro
+      - ./factorio/config:/factorio-config:ro   # for the generated RCON password
+      - bridge-data:/data                       # server certificate
+
+volumes:
+  bridge-data:

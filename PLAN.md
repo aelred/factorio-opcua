@@ -185,9 +185,15 @@ docs/                  setup, address-space reference, protocol spec
 
    Spreading reads over several ticks is left as an option if large setups
    need it.
-6. **Packaging:** mod zip attached to GitHub releases (installed by hand
-   into `mods/`), `pip install`able bridge, Docker compose example, docs, and CI (busted, pytest, and an
-   optional headless e2e job).
+6. ✅ **Packaging:** done.
+   - **CI:** `.github/workflows/ci.yml` runs unit tests on Python 3.11 and
+     3.13, integration tests against the headless server, and package and
+     Docker builds.
+   - **Releases:** `.github/workflows/release.yml` publishes the mod zip and
+     the bridge wheel and sdist on `v*` tags (`docs/releasing.md`).
+   - **Docker:** `bridge/Dockerfile` and `deploy/compose.yml`
+     (`docs/docker.md`).
+   - **Versions:** the mod and bridge share one version, starting at 0.6.0.
 
 ## 6. Risks (updated after the M1 spike)
 - ~~RCON reply size limits~~: resolved. Replies are a single packet of any

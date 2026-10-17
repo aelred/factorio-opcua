@@ -1,0 +1,27 @@
+# Bridge config for deploy/compose.yml. All options: bridge/example.toml and docs/security.md.
+
+[factorio]
+rcon_host = "factorio"                          # the compose service name
+rcon_port = 27015
+rcon_password_file = "/factorio-config/rconpw"  # written by the Factorio container on first start
+
+[opcua]
+# Inside the container the bridge must listen on all interfaces. Who can reach
+# it is decided by the port mapping in compose.yml, which publishes it on
+# 127.0.0.1 only; that is why allow_insecure is acceptable here. If you
+# publish the port to your network, set anonymous = "none" and add users, or
+# drop "none" from security, and remove allow_insecure.
+endpoint = "opc.tcp://0.0.0.0:4840/factorio-opc/"
+security = ["none", "sign_encrypt"]
+anonymous = "write"
+allow_insecure = true
+pki_dir = "/data/pki"
+
+# [[opcua.users]]
+# name = "operator"
+# password_hash = "scrypt$..."    # docker compose run --rm bridge hash-password
+# role = "write"
+
+[bridge]
+poll_hz = 10
+log_format = "text"

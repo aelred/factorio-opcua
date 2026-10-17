@@ -256,3 +256,11 @@ def test_hash_password_command(capsys, monkeypatch):
     assert main(["hash-password"]) == 0
     encoded = capsys.readouterr().out.strip()
     assert verify_password("typed-pw", encoded)
+
+
+def test_hash_password_command_without_input(capsys, monkeypatch):
+    def no_input(prompt=""):
+        raise EOFError
+    monkeypatch.setattr("getpass.getpass", no_input)
+    assert main(["hash-password"]) == 1
+    assert "no password entered" in capsys.readouterr().err
