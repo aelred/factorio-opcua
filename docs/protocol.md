@@ -1,4 +1,4 @@
-# opc-io RCON protocol (proto 2)
+# opc-io RCON protocol (proto 1)
 
 The bridge talks to the `opc-io` mod with ordinary RCON console commands.
 Each command replies with **one JSON object** containing `"ok"`. Commands
@@ -45,12 +45,9 @@ copy whose name is already taken gets `-2`, `-3`, ... appended.
 
 ## Commands
 
-Protocol 2 (opc-io 0.3.0) added `/opc_poll`. Bridge 0.4.0 and later
-require it.
-
 ### `/opc_hello`
 ```json
-{"ok":true,"proto":2,"mod_version":"0.3.0","factorio_version":"2.0.77",
+{"ok":true,"proto":1,"mod_version":"0.6.0","factorio_version":"2.0.77",
  "tick":7172,"tick_paused":false,"speed":1,"model_version":2}
 ```
 
@@ -62,19 +59,9 @@ require it.
 ```
 Tags are sorted by name.
 
-### `/opc_snapshot`
-All current values. For each reader, the red and green networks are
-reported separately (an unconnected wire gives an empty map). For each
-writer, its current output is reported.
-```json
-{"ok":true,"tick":7658,"model_version":2,
- "readers":{"reader-1":{"red":{"item/iron-plate":5,"virtual/signal-A":-3},"green":{}}},
- "writers":{"writer-1":{"item/iron-plate":5,"virtual/signal-A":-3}}}
-```
-A writer's output shows up on wired networks on the next tick.
-
 ### `/opc_poll <json>`
-Change-only polling, which is what the bridge uses on every cycle.
+Reads tag values: everything on the first poll of a session, then only
+what changed. The bridge uses it on every cycle.
 ```json
 {"session":"8f2c...","ack":41}
 ```
@@ -91,7 +78,9 @@ Reply:
  "removed":["old-tag"]}
 ```
 - **Full replies:** when `full` is true, `readers` and `writers` hold every
-  value, as in `/opc_snapshot`.
+  value. For each reader, the red and green networks are reported
+  separately, and an unconnected wire gives an empty map. For each writer,
+  its current output is reported.
 - **Delta replies:** otherwise they hold only tags that changed since reply
   `ack`:
   - A reader lists only the changed keys of each wire.

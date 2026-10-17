@@ -28,7 +28,7 @@ from typing import Awaitable, Callable
 from asyncua import Server, ua
 from asyncua.common.node import Node
 
-from .game import Hello, Poll, SignalMap, Snapshot, Tag
+from .game import Hello, Poll, ReaderValues, SignalMap, Tag
 
 NAMESPACE_URI = "urn:factorio-opc"
 
@@ -326,10 +326,11 @@ class AddressSpace:
         self._writers[name] = dict(values)
         await self._update_writer(name, None, when or now())
 
-    async def apply_snapshot(self, snapshot: Snapshot, when: datetime) -> None:
+    async def _replace_all(self, readers: dict[str, ReaderValues], writers: dict[str, SignalMap],
+                           when: datetime) -> None:
         """Replace all cached values and push every signal."""
-        self._readers = {n: (dict(r.red), dict(r.green)) for n, r in snapshot.readers.items()}
-        self._writers = {n: dict(w) for n, w in snapshot.writers.items()}
+        self._readers = {n: (dict(r.red), dict(r.green)) for n, r in readers.items()}
+        self._writers = {n: dict(w) for n, w in writers.items()}
         for name, nodes in self.tags.items():
             if nodes.tag.kind == "reader":
                 await self._update_reader(name, None, when)
@@ -340,8 +341,7 @@ class AddressSpace:
     async def apply_poll(self, poll: Poll, when: datetime) -> None:
         """Apply a /opc_poll reply: a full one replaces everything, a delta only touches what changed."""
         if poll.full:
-            await self.apply_snapshot(Snapshot(tick=poll.tick, model_version=poll.model_version,
-                                               readers=poll.readers, writers=poll.writers), when)
+            await self._replace_all(poll.readers, poll.writers, when)
             return
         for name in poll.removed:
             self._readers.pop(name, None)

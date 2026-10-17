@@ -124,7 +124,7 @@ async def test_status_nodes(client, world):
     async def check():
         assert await value(client, "Status/Connected") is True
         assert await value(client, "Status/FactorioVersion") == "2.0.77"
-        assert await value(client, "Status/ModVersion") == "0.2.0"
+        assert await value(client, "Status/ModVersion") == "0.6.0"
         assert await value(client, "Status/GameTick") > 0
         assert await value(client, "Status/ModelVersion") == world.model_version
 

@@ -50,6 +50,10 @@ class Factorio:
             raise AssertionError(reply)
         return reply
 
+    async def values(self) -> dict:
+        """All current values: a full /opc_poll reply ({"readers": ..., "writers": ...})."""
+        return await self.command("opc_poll", {"session": "itest-values", "full": True})
+
     async def ticks(self, n: int = 2) -> None:
         """Wait until at least n game ticks pass (each command also advances a paused server)."""
         start = (await self.command("opc_hello"))["tick"]

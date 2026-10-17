@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from factorio_opc.game import GameError, Hello, Poll, ReaderValues, Snapshot, Tag
+from factorio_opc.game import GameError, Hello, Poll, ReaderValues, Tag
 from factorio_opc.rcon import RconError
 
 
@@ -20,7 +20,7 @@ class FakeWorld:
         self.reject_writes: str | None = None
         self.connections = 0
         self.polls: list[Poll] = []          # every poll reply, for assertions
-        self.sessions: dict[str, dict] = {}  # session -> {"seq": int, "values": snapshot-shaped dict}
+        self.sessions: dict[str, dict] = {}  # session -> {"seq": int, "values": {"readers", "writers"}}
         self._unit = 0
 
     def add(self, kind: str, name: str) -> None:
@@ -70,18 +70,12 @@ class FakeGame:
 
     async def hello(self) -> Hello:
         self._check()
-        return Hello(proto=1, mod_version="0.2.0", factorio_version="2.0.77", tick=self.world.tick,
+        return Hello(proto=1, mod_version="0.6.0", factorio_version="2.0.77", tick=self.world.tick,
                      tick_paused=False, speed=1.0, model_version=self.world.model_version)
 
     async def browse(self) -> list[Tag]:
         self._check()
         return sorted(self.world.tags.values(), key=lambda t: t.name)
-
-    async def snapshot(self) -> Snapshot:
-        self._check()
-        return Snapshot(tick=self.world.tick, model_version=self.world.model_version,
-                        readers=dict(self.world.readers),
-                        writers={k: dict(v) for k, v in self.world.writers.items()})
 
     async def poll(self, session: str, ack: int | None, full: bool = False) -> Poll:
         """Same semantics as the mod's lib/poll.lua."""

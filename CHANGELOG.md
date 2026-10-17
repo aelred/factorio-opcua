@@ -6,14 +6,14 @@ The mod (opc-io) and the bridge (factorio-opc) share one version number.
 
 First packaged release.
 
-**Mod (opc-io), RCON protocol 2:**
+**Mod (opc-io), RCON protocol 1:**
 - **Entities:** OPC Writer and OPC Reader combinators, unlocked by Circuit
   network.
 - **Tag names:** every reader and writer has a tag name, set in its panel,
   kept in blueprints (taken names get a `-2` suffix), and renameable through
   `remote.call("opc-io", "rename", ...)`.
-- **RCON commands:** `/opc_hello`, `/opc_browse`, `/opc_snapshot`,
-  `/opc_write`, and `/opc_poll`, which returns only changes. Errors come back
+- **RCON commands:** `/opc_hello`, `/opc_browse`, `/opc_poll`, which
+  returns only changes after a session's first poll, and `/opc_write`. Errors come back
   as JSON and never stop the server.
 - **Quality:** quality signals are supported with Space Age.
 - **Performance:** a 500-pair poll takes about 11 ms.

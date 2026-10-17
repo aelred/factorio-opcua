@@ -8,8 +8,7 @@ local signals = require("lib.signals")
 
 local api = {}
 
--- 2: added /opc_poll (change-only polling) and tick_paused/speed in its reply.
-api.PROTO = 2
+api.PROTO = 1
 
 local function reply(t)
   rcon.print(helpers.table_to_json(t))
@@ -127,12 +126,6 @@ function handlers.opc_browse()
   return { tick = game.tick, model_version = registry.model_version(), tags = tags }
 end
 
-function handlers.opc_snapshot()
-  local values = read_all()
-  return { tick = game.tick, model_version = registry.model_version(), readers = values.readers,
-           writers = values.writers }
-end
-
 -- {"session": "<id>", "ack": <seq of the last reply applied>, "full": false}
 -- Returns only what changed since the last reply to this session; see lib/poll.lua.
 function handlers.opc_poll(cmd)
@@ -186,7 +179,6 @@ end
 local help = {
   opc_hello = "handshake",
   opc_browse = "list OPC tags",
-  opc_snapshot = "read all OPC tag values",
   opc_poll = "read OPC tag values changed since the last poll (JSON parameter)",
   opc_write = "set OPC Writer signals (JSON parameter)",
 }

@@ -8,7 +8,7 @@ from typing import Literal, Protocol
 
 from .rcon import RconClient
 
-PROTO = 2  # opc-io 0.3.0+: /opc_poll
+PROTO = 1
 
 SignalMap = dict[str, int]
 Kind = Literal["reader", "writer"]
@@ -45,14 +45,6 @@ class ReaderValues:
 
 
 @dataclass(frozen=True)
-class Snapshot:
-    tick: int
-    model_version: int
-    readers: dict[str, ReaderValues]
-    writers: dict[str, SignalMap]
-
-
-@dataclass(frozen=True)
 class Poll:
     """One /opc_poll reply: everything (full) or only what changed since the acked reply.
 
@@ -78,7 +70,6 @@ class GameApi(Protocol):
     async def close(self) -> None: ...
     async def hello(self) -> Hello: ...
     async def browse(self) -> list[Tag]: ...
-    async def snapshot(self) -> Snapshot: ...
     async def poll(self, session: str, ack: int | None, full: bool = False) -> Poll: ...
     async def write(self, tag: str, signals: SignalMap, mode: str = "merge") -> SignalMap: ...
 
@@ -141,27 +132,21 @@ def parse_browse(reply: dict) -> list[Tag]:
     ]
 
 
-def parse_snapshot(reply: dict) -> Snapshot:
+def parse_poll(reply: dict) -> Poll:
     readers = {
         str(name): ReaderValues(red=_signals(_as_map(v).get("red")), green=_signals(_as_map(v).get("green")))
         for name, v in _as_map(reply.get("readers")).items()
     }
     writers = {str(name): _signals(v) for name, v in _as_map(reply.get("writers")).items()}
-    return Snapshot(tick=int(reply["tick"]), model_version=int(reply["model_version"]),
-                    readers=readers, writers=writers)
-
-
-def parse_poll(reply: dict) -> Poll:
-    snap = parse_snapshot(reply)
     return Poll(
         seq=int(reply["seq"]),
         full=bool(reply["full"]),
-        tick=snap.tick,
+        tick=int(reply["tick"]),
         tick_paused=bool(reply["tick_paused"]),
         speed=float(reply["speed"]),
-        model_version=snap.model_version,
-        readers=snap.readers,
-        writers=snap.writers,
+        model_version=int(reply["model_version"]),
+        readers=readers,
+        writers=writers,
         removed=[str(n) for n in _as_list(reply.get("removed"))],
     )
 
@@ -192,9 +177,6 @@ class RconGame:
 
     async def browse(self) -> list[Tag]:
         return parse_browse(await self._call("opc_browse"))
-
-    async def snapshot(self) -> Snapshot:
-        return parse_snapshot(await self._call("opc_snapshot"))
 
     async def poll(self, session: str, ack: int | None, full: bool = False) -> Poll:
         request: dict = {"session": session, "full": full}

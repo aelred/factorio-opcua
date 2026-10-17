@@ -6,7 +6,7 @@ import pytest
 async def test_hello(factorio):
     hello = await factorio.command("opc_hello")
     assert hello["ok"] is True
-    assert hello["proto"] == 2
+    assert hello["proto"] == 1
     assert hello["factorio_version"].startswith("2.0")
     assert isinstance(hello["model_version"], int)
 
@@ -37,7 +37,7 @@ async def test_write_reaches_wired_reader(factorio):
                      "signals": {"item/iron-plate": 5, "virtual/signal-A": -3}}
     await factorio.ticks(2)
 
-    snap = await factorio.command("opc_snapshot")
+    snap = await factorio.values()
     assert snap["writers"][w] == {"item/iron-plate": 5, "virtual/signal-A": -3}
     assert snap["readers"][r]["red"] == {"item/iron-plate": 5, "virtual/signal-A": -3}
     assert not snap["readers"][r]["green"]  # empty map encodes as {} (or [])
@@ -56,7 +56,7 @@ async def test_reader_sums_and_separates_wire_colours(factorio):
     await factorio.command("opc_write", {"tag": n1, "signals": {"virtual/signal-A": 2}})
     await factorio.command("opc_write", {"tag": n2, "signals": {"virtual/signal-A": 3, "fluid/water": 1}})
     await factorio.ticks(2)
-    readings = (await factorio.command("opc_snapshot"))["readers"][r]
+    readings = (await factorio.values())["readers"][r]
     assert readings["red"] == {"virtual/signal-A": 5, "fluid/water": 1}
     assert readings["green"] == {"virtual/signal-A": 3, "fluid/water": 1}
 
@@ -71,7 +71,7 @@ async def test_merge_replace_and_zero_removes(factorio):
     assert replaced["signals"] == {"virtual/signal-B": 4}
     cleared = await factorio.command("opc_write", {"tag": w, "signals": {}, "mode": "replace"})
     assert not cleared["signals"]
-    assert not (await factorio.command("opc_snapshot"))["writers"][w]
+    assert not (await factorio.values())["writers"][w]
 
 
 async def test_reader_emits_nothing_and_writer_keeps_one_ungrouped_section(factorio):

@@ -22,6 +22,7 @@ function registry.init()
   s.model_version = s.model_version or 0
   s.next_index = s.next_index or { reader = 1, writer = 1 }
   s.sessions = s.sessions or {} -- bridge poll sessions, see lib/poll.lua
+  s.audit_index = s.audit_index or 0 -- round-robin position of audit_writers
 end
 
 function registry.sessions()
@@ -112,13 +113,11 @@ function registry.read_writer(entity)
   return map
 end
 
--- A writer's output as cached in its entry (kept in storage). The mod is the
--- only thing that changes writer output (its GUI replaces the combinator's,
--- and pastes are normalized), and audit_writers catches anything else.
+-- A writer's output as cached in its entry (kept in storage; set by normalize
+-- when the writer is registered). The mod is the only thing that changes
+-- writer output (its GUI replaces the combinator's, and pastes are
+-- normalized), and audit_writers catches anything else.
 function registry.writer_values(entry)
-  if entry.values == nil then
-    entry.values = registry.read_writer(entry.entity)
-  end
   return entry.values
 end
 
@@ -141,10 +140,10 @@ function registry.audit_writers(count)
     return
   end
   for _ = 1, math.min(count, #writers) do
-    s.audit_index = (s.audit_index or 0) % #writers + 1
+    s.audit_index = s.audit_index % #writers + 1
     local entry = writers[s.audit_index]
     local actual = registry.read_writer(entry.entity)
-    if entry.values == nil or not same(actual, entry.values) then
+    if not same(actual, entry.values) then
       entry.values = actual
     end
   end

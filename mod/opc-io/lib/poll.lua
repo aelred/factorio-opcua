@@ -7,7 +7,7 @@
 -- session, or a save loaded from before the last reply) gets a full reply
 -- instead of a delta, so the two sides can't drift apart.
 --
--- Values tables have the snapshot shape:
+-- Values tables (current state, and what a session was last sent) look like:
 --   { readers = { [tag] = { red = map, green = map } }, writers = { [tag] = map } }
 
 local poll = {}

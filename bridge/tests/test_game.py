@@ -1,6 +1,6 @@
 import pytest
 
-from factorio_opc.game import GameError, parse_browse, parse_hello, parse_reply, parse_snapshot
+from factorio_opc.game import GameError, parse_browse, parse_hello, parse_poll, parse_reply
 
 
 def test_parse_reply_errors():
@@ -14,7 +14,7 @@ def test_parse_reply_errors():
 
 def test_parse_hello():
     hello = parse_hello(parse_reply(
-        '{"proto":1,"mod_version":"0.2.0","factorio_version":"2.0.77","tick":5,"tick_paused":false,'
+        '{"proto":1,"mod_version":"0.6.0","factorio_version":"2.0.77","tick":5,"tick_paused":false,'
         '"speed":1,"model_version":3,"ok":true}\n'))
     assert hello.tick == 5 and hello.speed == 1.0 and hello.model_version == 3
 
@@ -26,25 +26,28 @@ def test_parse_browse_accepts_empty_object_for_empty_list():
     assert tags[0].name == "r" and tags[0].position == (1.5, 2.5)
 
 
-def test_parse_snapshot_with_empty_tables():
-    snap = parse_snapshot(parse_reply(
-        '{"tick":9,"model_version":2,"readers":{"r":{"red":{"item/iron-plate":5},"green":{}}},'
-        '"writers":{"w":{}},"ok":true}'))
-    assert snap.readers["r"].red == {"item/iron-plate": 5}
-    assert snap.readers["r"].green == {}
-    assert snap.writers == {"w": {}}
-    empty = parse_snapshot(parse_reply('{"tick":1,"model_version":0,"readers":{},"writers":{},"ok":true}'))
-    assert empty.readers == {} and empty.writers == {}
+POLL_HEADER = '"seq":1,"full":true,"tick":9,"tick_paused":false,"speed":1,"model_version":2'
 
 
-def test_parse_snapshot_rejects_wrong_shapes():
+def test_parse_full_poll_with_empty_tables():
+    poll = parse_poll(parse_reply(
+        '{' + POLL_HEADER + ',"readers":{"r":{"red":{"item/iron-plate":5},"green":{}}},'
+        '"writers":{"w":{}},"removed":{},"ok":true}'))
+    assert poll.full and poll.tick == 9 and poll.model_version == 2
+    assert poll.readers["r"].red == {"item/iron-plate": 5}
+    assert poll.readers["r"].green == {}
+    assert poll.writers == {"w": {}}
+    empty = parse_poll(parse_reply('{' + POLL_HEADER + ',"readers":{},"writers":{},"removed":{},"ok":true}'))
+    assert empty.readers == {} and empty.writers == {} and empty.removed == []
+
+
+def test_parse_poll_rejects_wrong_shapes():
     with pytest.raises(GameError):
-        parse_snapshot({"tick": 1, "model_version": 0, "readers": [1], "writers": {}, "ok": True})
+        parse_poll({"seq": 1, "full": True, "tick": 1, "tick_paused": False, "speed": 1, "model_version": 0,
+                    "readers": [1], "writers": {}, "ok": True})
 
 
 def test_parse_poll_delta_with_empty_tables():
-    from factorio_opc.game import parse_poll
-
     poll = parse_poll(parse_reply(
         '{"seq":4,"full":false,"tick":10,"tick_paused":false,"speed":1,"model_version":2,'
         '"readers":{"r":{"red":{"item/iron-plate":0},"green":{}}},"writers":{},"removed":{},"ok":true}'))
