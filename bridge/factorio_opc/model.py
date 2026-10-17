@@ -49,6 +49,32 @@ def wrap_int32(value: int) -> int:
     return (value + 2**31) % 2**32 - 2**31
 
 
+def describe_changes(changes: list[ua.ModelChangeStructureDataType], limit: int = 5) -> str:
+    """Human-readable event message, for clients that only show an event's Message.
+
+    E.g. "Added Writers/press_2; removed Writers/press; 1 new signal node".
+    """
+    def names(verb: int) -> list[str]:
+        return [str(c.Affected.Identifier) for c in changes
+                if c.Verb == verb and c.AffectedType == ua.NodeId(ua.ObjectIds.BaseObjectType)]
+
+    def listing(items: list[str]) -> str:
+        shown = ", ".join(items[:limit])
+        return shown + (f" and {len(items) - limit} more" if len(items) > limit else "")
+
+    parts = []
+    if added := names(VERB_ADDED):
+        parts.append(f"added {listing(added)}")
+    if removed := names(VERB_DELETED):
+        parts.append(f"removed {listing(removed)}")
+    signals = sum(1 for c in changes if c.Verb == VERB_ADDED
+                  and c.AffectedType == ua.NodeId(ua.ObjectIds.BaseDataVariableType))
+    if signals:
+        parts.append(f"{signals} new signal node{'s' if signals != 1 else ''}")
+    text = "; ".join(parts)
+    return text[:1].upper() + text[1:]
+
+
 def now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -338,6 +364,7 @@ class AddressSpace:
         if not self._pending_changes:
             return
         changes, self._pending_changes = self._pending_changes, []
+        message = describe_changes(changes)
         for generator in self._change_generators:
             generator.event.Changes = changes
-            await generator.trigger(message=f"{len(changes)} node(s) added or removed")
+            await generator.trigger(message=message)

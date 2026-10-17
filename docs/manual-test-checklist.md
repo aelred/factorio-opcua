@@ -33,37 +33,62 @@ mode is convenient).
 
 Last full pass: 2026-10-16, opc-io 0.2.0, all items passed.
 
-## Bridge in an OPC UA client (UaExpert, or FreeOpcUa `opcua-client` on macOS)
+## Using opcua-client
+
+Every client step in this checklist uses FreeOpcUa **`opcua-client`**
+(`pipx install opcua-client`, then run `opcua-client`), which works on
+macOS without an account. The terms below are its UI:
+
+- **Connect:** enter `opc.tcp://127.0.0.1:4840/factorio-opc/` in the
+  address box and press **Connect**. No security or login is needed.
+- **Tree:** the browse tree on the left. Children load when you first
+  expand a node and are then cached, so the tree doesn't show tags added or
+  renamed later. To refresh it, press **Disconnect** then **Connect**.
+- **Watch a value:** right-click a variable and choose **Subscribe to data
+  change**. It appears in the **Subscriptions** pane with live value and
+  status.
+- **Write a value:** select a variable, then in the **Attributes** pane
+  double-click its Value, type the new number and press Enter.
+- **Call a method:** right-click it and choose **Call**. Each argument has
+  its own box; press **Call Method**, and the status and output appear in
+  the dialog.
+- **Watch events:** right-click `Objects/Server` and choose **Subscribe to
+  events**. Events appear in the **Events** pane, and the Message column
+  carries the useful text. It doesn't show event-specific fields such as a
+  model change's `Changes` list.
+
+## Bridge in an OPC UA client
 
 Setup: `scripts/dev-server.sh up` (or your own server with RCON), then
 `factorio-opc --rcon-password-file .dev/factorio/config/rconpw` (or
-`--config bridge/example.toml`). Connect UaExpert to
-`opc.tcp://127.0.0.1:4840/factorio-opc/` with security None and anonymous
-login. Building entities needs a game client connected to the server, or
-`/sc` commands over RCON.
+`--config bridge/example.toml`). Connect opcua-client as above. Building
+entities needs a game client connected to the server, or `/sc` commands
+over RCON.
 
-- [x] Factorio/Status shows Connected = true, plus the game tick, versions
-      and latency.
-- [x] Readers and Writers list your in-game tags; renaming a tag in game
-      updates the tree within a second (you may need to refresh the browse
-      view).
-- [x] Reader values update live in the Data Access view as the circuit
-      changes, and Total = Red + Green.
-- [x] Calling `SetSignals` on a writer with `{"virtual/signal-A": 5}` and
-      `merge` makes the signal appear in game and under `Signals/`.
-- [x] Writing a writer's signal node changes the in-game output; writing a
-      reader node is refused.
-- [x] Stopping the Factorio server makes values go Uncertain and Connected
+- [x] Under `Objects/Factorio/Status`, Connected is true, and GameTick,
+      versions and LastPollLatencyMs are filled in.
+- [x] `Readers` and `Writers` list your in-game tags.
+- [x] Subscribed reader values (Red, Green, Total) update live in the
+      Subscriptions pane as the circuit changes, and Total = Red + Green.
+- [x] Calling `Writers/<tag>/SetSignals` with `{"virtual/signal-A": 5}` and
+      `merge` returns Good, the signal appears in game, and it appears under
+      `Signals/` after a reconnect.
+- [x] Writing a writer signal's Value in the Attributes pane changes the
+      in-game output; the same edit on a reader signal is refused.
+- [x] Stopping the Factorio server turns subscribed values' status
+      Uncertain (`UncertainNoCommunicationLastUsableValue`) and Connected
       false; starting it again brings them back to Good.
 
 ## Model changes in a client (milestone 4)
 
-- [ ] Renaming a tag in game: the old node goes Bad (`BadNodeIdUnknown`) in
-      the Data Access view, and the new name appears under Readers/Writers.
-      Note whether your client refreshes the tree by itself (from the model
-      change event) or needs a manual refresh.
-- [ ] Mining a reader that you're monitoring: its items go Bad, and the tag
-      disappears from the tree.
-- [ ] In UaExpert's Event View, add the Server object with event type
-      GeneralModelChangeEventType, then place a new writer in game: one event
-      appears listing the new node.
+- [ ] Subscribe to data change on one of a tag's signals, then rename the
+      tag in game. Within a second the subscription's status turns
+      `BadNodeIdUnknown`. After Disconnect and Connect, the tree shows the
+      tag under its new name, with current values.
+- [ ] Subscribe to a reader signal, then mine that reader: its status turns
+      `BadNodeIdUnknown`, and after a reconnect the tag is gone from the
+      tree.
+- [ ] Subscribe to events on `Objects/Server`, then place a new writer in
+      game: one event appears in the Events pane, with a Message like
+      `Added Writers/writer-12`. Renaming a tag gives
+      `Added Writers/<new>; removed Writers/<old>`.

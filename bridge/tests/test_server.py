@@ -351,6 +351,20 @@ async def test_model_change_events_for_added_and_removed_tags(client, world):
     await sub.delete()
 
 
+def test_model_change_message_names_tags():
+    from factorio_opc.model import VERB_ADDED, VERB_DELETED, describe_changes
+
+    def change(path, type_id, verb):
+        return ua.ModelChangeStructureDataType(Affected=ua.NodeId(path, 2), AffectedType=ua.NodeId(type_id), Verb=verb)
+
+    tag, var = ua.ObjectIds.BaseObjectType, ua.ObjectIds.BaseDataVariableType
+    message = describe_changes([change("Writers/press_2", tag, VERB_ADDED), change("Writers/press", tag, VERB_DELETED),
+                                change("Writers/press_2/Signals/item/iron-plate", var, VERB_ADDED)])
+    assert message == "Added Writers/press_2; removed Writers/press; 1 new signal node"
+    many = describe_changes([change(f"Readers/r{i}", tag, VERB_ADDED) for i in range(7)], limit=5)
+    assert many == "Added Readers/r0, Readers/r1, Readers/r2, Readers/r3, Readers/r4 and 2 more"
+
+
 async def test_subscribers_of_a_removed_tag_get_a_bad_status(client, world):
     await eventually(lambda: value(client, "Readers/line_1/Red/item/iron-plate"))
     updates = asyncio.Queue()
