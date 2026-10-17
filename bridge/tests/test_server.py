@@ -205,6 +205,26 @@ async def test_set_signals_and_clear_all_methods(client, world):
     assert err.value.code == ua.StatusCodes.BadInvalidArgument
 
 
+async def test_set_signals_argument_handling(client, world):
+    press = node(client, "Writers/press")
+    method = ua.NodeId("Writers/press/SetSignals", client.ns)
+    await eventually(lambda: node(client, "Writers/press/Signals/virtual/signal-B").read_value())
+    # Mode is optional and defaults to merge.
+    result = await press.call_method(method, json.dumps({"item/iron-plate": 1}))
+    assert json.loads(result) == {"item/iron-plate": 1, "virtual/signal-B": 3}
+    for args, code in (
+        ((), ua.StatusCodes.BadArgumentsMissing),
+        (("{}", "merge", "extra"), ua.StatusCodes.BadTooManyArguments),
+        ((ua.Variant(5, ua.VariantType.Int32),), ua.StatusCodes.BadTypeMismatch),
+    ):
+        with pytest.raises(ua.UaStatusCodeError) as err:
+            await press.call_method(method, *args)
+        assert err.value.code == code, args
+    with pytest.raises(ua.UaStatusCodeError) as err:
+        await press.call_method(ua.NodeId("Writers/press/ClearAll", client.ns), "unexpected")
+    assert err.value.code == ua.StatusCodes.BadTooManyArguments
+
+
 async def test_tags_added_and_removed_follow_model_version(client, world):
     world.add("writer", "new_one")
 

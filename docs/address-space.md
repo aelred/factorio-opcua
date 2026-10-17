@@ -27,7 +27,7 @@ Objects/Factorio/
   Writers/
     <tag>/
       Signals/<signal> Int32  writable
-      SetSignals(SignalsJson: String, Mode: String) -> Signals: String
+      SetSignals(SignalsJson: String, [Mode: String]) -> Signals: String
       ClearAll()
 ```
 
@@ -77,8 +77,48 @@ same strings.
 | `BadCommunicationError` | The connection failed during the write |
 | `BadUserAccessDenied` / `BadNotWritable` | Tried to write a read-only node |
 
-`SetSignals` and `ClearAll` return the same codes as the call result.
-`SetSignals` returns the writer's full new output as JSON.
+`SetSignals` and `ClearAll` return the same codes as the call result, plus
+`BadArgumentsMissing`, `BadTooManyArguments` or `BadTypeMismatch` for wrong
+arguments. `Mode` may be left out and defaults to `merge`. `SetSignals`
+returns the writer's full new output as JSON.
+
+## Calling the methods from common tools
+
+**asyncua's `uacall`** is installed alongside the bridge. Prefix the method
+name with the namespace index (`2:`), or you'll get `BadNoMatch`:
+```sh
+uacall -u opc.tcp://127.0.0.1:4840/factorio-opc/ -n "ns=2;s=Writers/press" \
+       -m 2:SetSignals '{"item/iron-plate": 5}'            # merge
+uacall ... -m 2:SetSignals '{"item/iron-plate": 5},replace'  # replace
+uacall ... -m 2:ClearAll
+```
+`uacall` splits its arguments at commas, so JSON holding more than one
+signal arrives as extra arguments (`BadTooManyArguments`). Make one call per
+signal instead, or use a client that passes arguments separately (UaExpert,
+Node-RED, or a short asyncua script, as below).
+
+To change a signal the writer already outputs, write its node instead:
+`uawrite -u ... -n "ns=2;s=Writers/press/Signals/item/iron-plate" -t int32 9`.
+
+**opcua-commander** (checked at 1.2.5): its help screen lists `k` as "Call
+Method", but the handler only logs the node ID and never makes the call. It
+can't call `SetSignals`. Its `w` (Write Value) works on existing signal
+nodes.
+
+**A script**, for several signals at once:
+```python
+import asyncio, json
+from asyncua import Client, ua
+
+async def main():
+    async with Client("opc.tcp://127.0.0.1:4840/factorio-opc/") as c:
+        ns = await c.get_namespace_index("urn:factorio-opc")
+        writer = c.get_node(ua.NodeId("Writers/press", ns))
+        print(await writer.call_method(ua.NodeId("Writers/press/SetSignals", ns),
+                                       json.dumps({"item/iron-plate": 5, "virtual/signal-A": 1}), "merge"))
+
+asyncio.run(main())
+```
 
 ## Tag changes
 When `ModelVersion` changes, the bridge re-browses the game:

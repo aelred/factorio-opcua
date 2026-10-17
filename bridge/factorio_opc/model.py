@@ -157,14 +157,26 @@ class AddressSpace:
     async def _add_writer_methods(self, root: Node, base: str, name: str, handler: MethodHandler) -> None:
         # asyncua turns exceptions from methods into BadUnexpectedError; a returned
         # StatusCode is passed to the client as the call's result instead.
-        async def set_signals(parent, signals_json: ua.Variant, mode: ua.Variant):
+        async def set_signals(parent, *args: ua.Variant):
+            # Mode may be left out (defaults to "merge"); simple CLI clients find that easier.
+            if not args:
+                return ua.StatusCode(ua.StatusCodes.BadArgumentsMissing)
+            if len(args) > 2:
+                return ua.StatusCode(ua.StatusCodes.BadTooManyArguments)
+            values = [a.Value for a in args]
+            if any(v is not None and not isinstance(v, str) for v in values):
+                return ua.StatusCode(ua.StatusCodes.BadTypeMismatch)
+            signals_json = values[0] or "{}"
+            mode = (values[1] if len(values) > 1 else None) or "merge"
             try:
-                result = await handler(name, signals_json.Value or "{}", mode.Value or "merge")
+                result = await handler(name, signals_json, mode)
             except ua.UaStatusCodeError as exc:
                 return ua.StatusCode(exc.code)
             return [ua.Variant(result, ua.VariantType.String)]
 
-        async def clear_all(parent):
+        async def clear_all(parent, *args: ua.Variant):
+            if args:
+                return ua.StatusCode(ua.StatusCodes.BadTooManyArguments)
             try:
                 await handler(name, "{}", "replace")
             except ua.UaStatusCodeError as exc:
@@ -174,7 +186,7 @@ class AddressSpace:
         signals_arg = ua.Argument(Name="SignalsJson", DataType=ua.NodeId(ua.ObjectIds.String), ValueRank=-1,
                                   Description=ua.LocalizedText('JSON object, e.g. {"item/iron-plate": 5}; 0 removes'))
         mode_arg = ua.Argument(Name="Mode", DataType=ua.NodeId(ua.ObjectIds.String), ValueRank=-1,
-                               Description=ua.LocalizedText('"merge" (default) or "replace"'))
+                               Description=ua.LocalizedText('"merge" (default, may be omitted) or "replace"'))
         result_arg = ua.Argument(Name="Signals", DataType=ua.NodeId(ua.ObjectIds.String), ValueRank=-1,
                                  Description=ua.LocalizedText("The writer's full output after the call, as JSON"))
         await root.add_method(self.nodeid(f"{base}/SetSignals"), self.qname("SetSignals"), set_signals,
