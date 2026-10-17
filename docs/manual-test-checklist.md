@@ -96,7 +96,11 @@ over RCON.
 ## Security and metrics (milestone 5)
 
 Setup: make a password hash with `factorio-opc hash-password`, and a client
-certificate with `factorio-opc make-client-cert ~/uaclient-cert`. Then put
+certificate with `factorio-opc make-client-cert ~/uaclient-cert`.
+The client certificate is for **opcua-client**, which can't make its own; the
+bridge doesn't need a copy. The bridge creates its own server certificate in
+`~/.factorio-opc/pki/` when it starts, and accepts any client certificate,
+using it only to encrypt; the login decides access. Then put
 this in a config file in the repo root (for example `secure.toml`;
 relative paths are resolved from the config file's folder) and run
 `factorio-opc --config secure.toml`:

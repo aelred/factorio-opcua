@@ -106,6 +106,7 @@ server, or on a private network, and don't expose the RCON port.
 ## Connecting with opcua-client (encrypted, with a login)
 
 1. Make a client certificate once: `factorio-opc make-client-cert ~/uaclient-cert`.
+   It's opcua-client's own certificate; the bridge needs nothing from it.
 2. In opcua-client, choose **Settings → Client Application Certificate**, and
    select `client_cert.der` and then `client_key.pem` from that folder.
 3. Enter the address with your login in it:
