@@ -135,7 +135,7 @@ async def test_name_survives_death_and_rebuild_from_ghost(factorio, kind):
     await factorio.lua("game.forces.player.create_ghost_on_entity_death = true")
     await factorio.lua(f'{factorio.ref(unit)}.die("enemy")')
     rebuilt = await factorio.lua(
-        f'local g = game.surfaces.nauvis.find_entity("entity-ghost", {{76.5, 10.5}}) '
+        'local g = game.surfaces.nauvis.find_entity("entity-ghost", {76.5, 10.5}) '
         "local _, e = g.revive{raise_revive=true} return e.unit_number")
     await factorio.ticks()
     assert (await factorio.tag_by_unit(int(rebuilt)))["name"] == f"{kind}_survivor"

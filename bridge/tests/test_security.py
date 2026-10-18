@@ -227,8 +227,8 @@ password_hash = "{hash_password("v")}"
     ('[[opcua.users]]\nname = "a"\npassword = "x"\n[[opcua.users]]\nname = "a"\npassword = "y"\n', "twice"),
     ('[opcua]\ncertificate = "c.der"\n', "both"),
     ('[opcua]\nendpoint = "opc.tcp://0.0.0.0:4840/x/"\n', "reachable from the network"),
-    ('[opcua]\nendpoint = "opc.tcp://0.0.0.0:4840/x/"\nanonymous = "none"\nsecurity = ["none", "sign"]\n'
-     '[[opcua.users]]\nname = "a"\npassword = "x"\n', "passwords would be sent unencrypted"),
+    (('[opcua]\nendpoint = "opc.tcp://0.0.0.0:4840/x/"\nanonymous = "none"\nsecurity = ["none", "sign"]\n'
+      '[[opcua.users]]\nname = "a"\npassword = "x"\n'), "passwords would be sent unencrypted"),
 ])
 def test_config_validation(tmp_path, text, message):
     path = tmp_path / "bridge.toml"
