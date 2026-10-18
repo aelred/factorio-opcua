@@ -1,4 +1,4 @@
--- RCON command API used by the factorio-opc bridge. See docs/protocol.md.
+-- RCON command API used by the factorio-opcua bridge. See docs/protocol.md.
 -- Every reply is one JSON object with "ok". All handlers go through rcon_only,
 -- which catches errors: an uncaught error in a command stops a multiplayer server.
 
@@ -21,7 +21,7 @@ end
 local function rcon_only(handler)
   return function(cmd)
     if cmd.player_index then
-      game.get_player(cmd.player_index).print("[opc-io] this command is for the OPC bridge (RCON) only")
+      game.get_player(cmd.player_index).print("[opcua-io] this command is for the OPC bridge (RCON) only")
       return
     end
     local ok, result = pcall(handler, cmd)
@@ -31,7 +31,7 @@ local function rcon_only(handler)
     elseif type(result) == "table" and result.opc_error then
       reply({ ok = false, error = result.opc_error })
     else
-      log("[opc-io] /" .. cmd.name .. " failed: " .. tostring(result))
+      log("[opcua-io] /" .. cmd.name .. " failed: " .. tostring(result))
       reply({ ok = false, error = "internal error: " .. tostring(result) })
     end
   end
@@ -93,7 +93,7 @@ local handlers = {}
 function handlers.opc_hello()
   return {
     proto = api.PROTO,
-    mod_version = script.active_mods["opc-io"],
+    mod_version = script.active_mods["opcua-io"],
     factorio_version = script.active_mods["base"],
     tick = game.tick,
     tick_paused = game.tick_paused,
@@ -175,7 +175,7 @@ local help = {
 
 function api.register_commands()
   for name, handler in pairs(handlers) do
-    commands.add_command(name, "factorio-opc: " .. help[name] .. " (RCON only)", rcon_only(handler))
+    commands.add_command(name, "factorio-opcua: " .. help[name] .. " (RCON only)", rcon_only(handler))
   end
 end
 

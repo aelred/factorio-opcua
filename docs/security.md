@@ -8,7 +8,7 @@ section of the config file (see `bridge/example.toml`).
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `endpoint` | `opc.tcp://127.0.0.1:4840/factorio-opc/` | Only this machine can connect |
+| `endpoint` | `opc.tcp://127.0.0.1:4840/factorio-opcua/` | Only this machine can connect |
 | `security` | `["none", "sign_encrypt"]` | Offer unencrypted and encrypted endpoints |
 | `anonymous` | `"write"` | Clients without a login may read and write |
 | `users` | none | |
@@ -40,7 +40,7 @@ unencrypted.
 
 **Server certificate:** any mode other than `none` needs one. By default,
 the bridge creates a self-signed certificate in `pki_dir`
-(`~/.factorio-opc/pki`):
+(`~/.factorio-opcua/pki`):
 - **Files:** `server_cert.der` and `server_key.pem`; the key file is
   readable only by you.
 - **Names:** it covers this machine's host name, `localhost`, 127.0.0.1 and
@@ -66,7 +66,7 @@ anonymous = "none"         # none, read or write
 
 [[opcua.users]]
 name = "operator"
-password_hash = "scrypt$16384$8$1$..."   # factorio-opc hash-password
+password_hash = "scrypt$16384$8$1$..."   # factorio-opcua hash-password
 role = "write"
 
 [[opcua.users]]
@@ -82,7 +82,7 @@ role = "read"              # the default
 - **Anonymous:** `anonymous = "none"` refuses clients that don't log in.
 - **Unknown or wrong logins** are refused, including a user called "admin".
   No client can ever change the address space.
-- **Password hashes:** `factorio-opc hash-password` asks for a password and
+- **Password hashes:** `factorio-opcua hash-password` asks for a password and
   prints the hash for `password_hash`. A plain `password = "..."` is also
   accepted, but it puts the password in the config file.
 - **Password transport:** on the `sign` and `sign_encrypt` endpoints,
@@ -97,7 +97,7 @@ Every write, whether to a value or through a method, is logged at INFO,
 with who made it and whether the game accepted it:
 
 ```
-2026-10-17 20:30:01 INFO factorio_opc: write press {"item/iron-plate": 5} by operator
+2026-10-17 20:30:01 INFO factorio_opcua: write press {"item/iron-plate": 5} by operator
 ```
 
 With `--log-format json` (or `log_format = "json"` under `[bridge]`), each
@@ -119,7 +119,7 @@ These steps are for opcua-client 1.0.1 (see the
 0. Once: open **Settings → Client Application Certificate**, press
    **Generate self-signed certificate**, then OK. This is opcua-client's own
    certificate; the bridge needs no copy.
-1. Enter `opc.tcp://127.0.0.1:4840/factorio-opc/` and press **Connect**.
+1. Enter `opc.tcp://127.0.0.1:4840/factorio-opcua/` and press **Connect**.
 2. In the **Connect to server** dialog, choose **SignAndEncrypt** and pick an
    endpoint. Basic256Sha256 and Aes256_Sha256_RsaPss both work.
 3. Choose **Username**, then enter the user and password.

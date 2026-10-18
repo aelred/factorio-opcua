@@ -7,8 +7,8 @@ cd "$(dirname "$0")/.."
 
 data=.dev/factorio
 mkdir -p "$data/mods" "$data/config"
-rm -rf "$data/mods/opc-io"
-cp -r mod/opc-io "$data/mods/opc-io"
+rm -rf "$data/mods/opcua-io"
+cp -r mod/opcua-io "$data/mods/opcua-io"
 
 # Admins (can use /c, /editor and /cheat): FACTORIO_ADMINS="name1,name2", using
 # your Factorio username. Unset leaves the current admin list alone.
@@ -22,7 +22,7 @@ cp docker/server-settings.dev.json "$data/config/server-settings.json"
 
 compose=(docker compose -f docker/compose.yml)
 case "${1:-up}" in
-  # --wait returns once the healthcheck passes: RCON is up and opc-io answers.
+  # --wait returns once the healthcheck passes: RCON is up and opcua-io answers.
   up)   "${compose[@]}" up -d --force-recreate --wait --wait-timeout 300 ;;
   down) "${compose[@]}" down ;;
   logs) "${compose[@]}" logs -f ;;

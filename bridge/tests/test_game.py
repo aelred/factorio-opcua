@@ -1,6 +1,6 @@
 import pytest
 
-from factorio_opc.game import GameError, Tag, parse_browse, parse_hello, parse_poll, parse_reply
+from factorio_opcua.game import GameError, Tag, parse_browse, parse_hello, parse_poll, parse_reply
 
 
 def test_parse_reply_errors():

@@ -1,4 +1,4 @@
-# Example factorio-opc bridge config. Copy and edit it, then run: factorio-opc --config <file>
+# Example factorio-opcua bridge config. Copy and edit it, then run: factorio-opcua --config <file>
 # Every key is optional except the RCON password (or FACTORIO_RCON_PASSWORD).
 
 [factorio]
@@ -11,18 +11,18 @@ rcon_password_file = "rconpw"
 rcon_timeout = 5.0
 
 [opcua]
-# Localhost only. Use opc.tcp://0.0.0.0:4840/factorio-opc/ to listen on all
+# Localhost only. Use opc.tcp://0.0.0.0:4840/factorio-opcua/ to listen on all
 # interfaces, and then also tighten security below (see docs/security.md).
-endpoint = "opc.tcp://127.0.0.1:4840/factorio-opc/"
+endpoint = "opc.tcp://127.0.0.1:4840/factorio-opcua/"
 server_name = "Factorio OPC UA"
 # Endpoint modes offered: none, sign, sign_encrypt. Secure modes use a
 # self-signed certificate created in pki_dir (or set certificate/private_key).
 security = ["none", "sign_encrypt"]
-pki_dir = "~/.factorio-opc/pki"
+pki_dir = "~/.factorio-opcua/pki"
 # Access without a login: none, read or write.
 anonymous = "write"
 
-# Logins. Make a hash with: factorio-opc hash-password
+# Logins. Make a hash with: factorio-opcua hash-password
 # [[opcua.users]]
 # name = "operator"
 # password_hash = "scrypt$..."

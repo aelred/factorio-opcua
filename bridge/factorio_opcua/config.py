@@ -7,18 +7,18 @@
     rcon_timeout = 5.0
 
     [opcua]
-    endpoint = "opc.tcp://127.0.0.1:4840/factorio-opc/"
+    endpoint = "opc.tcp://127.0.0.1:4840/factorio-opcua/"
     server_name = "Factorio OPC UA"
     security = ["none", "sign_encrypt"]   # endpoint modes offered: none, sign, sign_encrypt
     anonymous = "write"                   # anonymous access: none, read or write
-    pki_dir = "~/.factorio-opc/pki"       # where the self-signed server certificate is kept
+    pki_dir = "~/.factorio-opcua/pki"       # where the self-signed server certificate is kept
     # certificate = "server_cert.der"     # use your own instead (DER or PEM) ...
     # private_key = "server_key.pem"      # ... with its PEM private key
     allow_insecure = false                # see Config.validate
 
     [[opcua.users]]
     name = "operator"
-    password_hash = "scrypt$..."          # from: factorio-opc hash-password
+    password_hash = "scrypt$..."          # from: factorio-opcua hash-password
     role = "write"                        # read or write
 
     [bridge]
@@ -67,12 +67,12 @@ class Config:
     rcon_port: int = 27015
     rcon_password: str = ""
     rcon_timeout: float = 5.0
-    endpoint: str = "opc.tcp://127.0.0.1:4840/factorio-opc/"
+    endpoint: str = "opc.tcp://127.0.0.1:4840/factorio-opcua/"
     server_name: str = "Factorio OPC UA"
     security: list[str] = field(default_factory=lambda: ["none", "sign_encrypt"])
     anonymous: str = "write"
     users: list[UserConfig] = field(default_factory=list)
-    pki_dir: str = "~/.factorio-opc/pki"
+    pki_dir: str = "~/.factorio-opcua/pki"
     certificate: str | None = None
     private_key: str | None = None
     allow_insecure: bool = False
@@ -182,7 +182,7 @@ def _parse_users(raw: list) -> list[UserConfig]:
         else:
             password_hash = str(entry["password_hash"])
             if not password_hash.startswith("scrypt$"):
-                raise ConfigError(f"user {name!r}: password_hash must come from 'factorio-opc hash-password'")
+                raise ConfigError(f"user {name!r}: password_hash must come from 'factorio-opcua hash-password'")
         users.append(UserConfig(name=name, role=role, password_hash=password_hash))
     return users
 

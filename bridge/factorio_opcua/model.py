@@ -7,7 +7,7 @@ Objects/Factorio/
   Readers/<tag>/  Red/<signal>, Green/<signal>, Total/<signal>  (Int32, read-only)
   Writers/<tag>/  Signals/<signal> (Int32, writable), SetSignals(), ClearAll()
 
-NodeIds are strings in the factorio-opc namespace that spell out the path,
+NodeIds are strings in the factorio-opcua namespace that spell out the path,
 e.g. "Readers/line_1/Red/item/iron-plate", so clients can address them directly.
 Signal nodes are created the first time a signal is seen and then kept (at 0)
 for as long as their tag exists, so subscriptions stay valid. A signal seen on
@@ -30,7 +30,7 @@ from asyncua.common.node import Node
 
 from .game import Hello, Poll, ReaderValues, SignalMap, Tag
 
-NAMESPACE_URI = "urn:factorio-opc"
+NAMESPACE_URI = "urn:factorio-opcua"
 
 GOOD = ua.StatusCode(ua.StatusCodes.Good)
 STALE = ua.StatusCode(ua.StatusCodes.UncertainNoCommunicationLastUsableValue)

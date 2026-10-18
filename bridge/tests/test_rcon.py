@@ -2,8 +2,8 @@ import asyncio
 
 import pytest
 
-from factorio_opc.game import GameError, RconGame
-from factorio_opc.rcon import (
+from factorio_opcua.game import GameError, RconGame
+from factorio_opcua.rcon import (
     SERVERDATA_AUTH,
     SERVERDATA_AUTH_RESPONSE,
     SERVERDATA_EXECCOMMAND,
@@ -124,7 +124,7 @@ async def test_failed_connect_closes_the_connection():
     try:
         game = RconGame("127.0.0.1", port, "secret")
         with pytest.raises(GameError):
-            await game.connect()  # opc-io not installed
+            await game.connect()  # opcua-io not installed
         assert game._client._writer is None
 
         server.auth_delay = 1

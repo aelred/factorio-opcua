@@ -3,7 +3,7 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "factorio-opc"
+name = "factorio-opcua"
 version = "0.6.0"
 description = "OPC UA server bridging Factorio 2.0 circuit networks over RCON"
 readme = "README.md"
@@ -23,14 +23,14 @@ classifiers = [
 ]
 
 [project.urls]
-Repository = "https://github.com/aelred/factorio-opc"
-Documentation = "https://github.com/aelred/factorio-opc#readme"
+Repository = "https://github.com/aelred/factorio-opcua"
+Documentation = "https://github.com/aelred/factorio-opcua#readme"
 
 [project.scripts]
-factorio-opc = "factorio_opc.__main__:main"
+factorio-opcua = "factorio_opcua.__main__:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "pytest-asyncio>=0.23"]
 
 [tool.setuptools.packages.find]
-include = ["factorio_opc*"]
+include = ["factorio_opcua*"]

@@ -7,12 +7,12 @@ local signals = require("lib.signals")
 
 local gui = {}
 
-local FRAME = "opc_io_frame"
+local FRAME = "opcua_io_frame"
 
 local function signal_text(map)
   local keys = signals.sorted_keys(map)
   if #keys == 0 then
-    return { "opc-io.no-signals" }
+    return { "opcua-io.no-signals" }
   end
   local lines = {}
   for _, key in ipairs(keys) do
@@ -24,7 +24,7 @@ end
 local function network_section(parent, entity, wire, caption)
   parent.add({ type = "label", caption = { caption }, style = "caption_label" })
   local network = entity.get_circuit_network(wire)
-  local text = network and signal_text(signals.from_network(network.signals)) or { "opc-io.not-connected" }
+  local text = network and signal_text(signals.from_network(network.signals)) or { "opcua-io.not-connected" }
   parent.add({ type = "label", caption = text }).style.single_line = false
 end
 
@@ -41,25 +41,25 @@ function gui.open(player, entry)
     type = "frame",
     name = FRAME,
     direction = "vertical",
-    caption = { "opc-io." .. entry.kind },
+    caption = { "opcua-io." .. entry.kind },
     tags = { unit = entry.unit },
   })
   frame.auto_center = true
 
   local row = frame.add({ type = "flow", direction = "horizontal" })
   row.style.vertical_align = "center"
-  row.add({ type = "label", caption = { "opc-io.tag-name" } })
-  row.add({ type = "textfield", name = "opc_io_name", text = entry.name, tags = { unit = entry.unit } })
-  row.add({ type = "button", name = "opc_io_apply", caption = { "opc-io.apply" }, tags = { unit = entry.unit } })
-  frame.add({ type = "label", name = "opc_io_error", caption = "" }).style.font_color = { r = 1, g = 0.3, b = 0.3 }
+  row.add({ type = "label", caption = { "opcua-io.tag-name" } })
+  row.add({ type = "textfield", name = "opcua_io_name", text = entry.name, tags = { unit = entry.unit } })
+  row.add({ type = "button", name = "opcua_io_apply", caption = { "opcua-io.apply" }, tags = { unit = entry.unit } })
+  frame.add({ type = "label", name = "opcua_io_error", caption = "" }).style.font_color = { r = 1, g = 0.3, b = 0.3 }
 
   frame.add({ type = "line" })
   if entry.kind == "writer" then
-    frame.add({ type = "label", caption = { "opc-io.signals-written" }, style = "caption_label" })
+    frame.add({ type = "label", caption = { "opcua-io.signals-written" }, style = "caption_label" })
     frame.add({ type = "label", caption = signal_text(registry.read_writer(entry.entity)) }).style.single_line = false
   else
-    network_section(frame, entry.entity, defines.wire_connector_id.circuit_red, "opc-io.signals-red")
-    network_section(frame, entry.entity, defines.wire_connector_id.circuit_green, "opc-io.signals-green")
+    network_section(frame, entry.entity, defines.wire_connector_id.circuit_red, "opcua-io.signals-red")
+    network_section(frame, entry.entity, defines.wire_connector_id.circuit_green, "opcua-io.signals-green")
   end
 
   player.opened = frame
@@ -71,12 +71,12 @@ local function apply(player, element)
   if not entry then
     return
   end
-  local field = element.parent["opc_io_name"]
+  local field = element.parent["opcua_io_name"]
   local ok, err = registry.rename(entry, field.text)
   if ok then
     gui.close(player)
   else
-    frame["opc_io_error"].caption = err
+    frame["opcua_io_error"].caption = err
   end
 end
 
@@ -98,13 +98,13 @@ function gui.on_closed(event)
 end
 
 function gui.on_click(event)
-  if event.element.valid and event.element.name == "opc_io_apply" then
+  if event.element.valid and event.element.name == "opcua_io_apply" then
     apply(game.get_player(event.player_index), event.element)
   end
 end
 
 function gui.on_confirmed(event)
-  if event.element.valid and event.element.name == "opc_io_name" then
+  if event.element.valid and event.element.name == "opcua_io_name" then
     apply(game.get_player(event.player_index), event.element)
   end
 end

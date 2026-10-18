@@ -11,10 +11,10 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parent.parent
 versions = {
-    "mod/opc-io/info.json": json.loads((root / "mod/opc-io/info.json").read_text())["version"],
+    "mod/opcua-io/info.json": json.loads((root / "mod/opcua-io/info.json").read_text())["version"],
     "bridge/pyproject.toml": tomllib.loads((root / "bridge/pyproject.toml").read_text())["project"]["version"],
-    "bridge/factorio_opc/__init__.py": re.search(
-        r'__version__ = "([^"]+)"', (root / "bridge/factorio_opc/__init__.py").read_text()).group(1),
+    "bridge/factorio_opcua/__init__.py": re.search(
+        r'__version__ = "([^"]+)"', (root / "bridge/factorio_opcua/__init__.py").read_text()).group(1),
 }
 if len(sys.argv) > 1:
     versions["tag " + sys.argv[1]] = sys.argv[1].removeprefix("v")

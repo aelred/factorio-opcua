@@ -1,4 +1,4 @@
-# factorio-opc bridge. Build from the repository root:  docker build -t factorio-opc bridge
+# factorio-opcua bridge. Build from the repository root:  docker build -t factorio-opcua bridge
 FROM python:3.13-slim
 
 COPY . /src
@@ -10,5 +10,5 @@ USER opc
 VOLUME /data
 EXPOSE 4840
 
-ENTRYPOINT ["factorio-opc"]
+ENTRYPOINT ["factorio-opcua"]
 CMD ["--config", "/config/bridge.toml"]

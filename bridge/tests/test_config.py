@@ -1,7 +1,7 @@
 import pytest
 
-from factorio_opc.__main__ import main
-from factorio_opc.config import Config, ConfigError, load_config
+from factorio_opcua.__main__ import main
+from factorio_opcua.config import Config, ConfigError, load_config
 
 
 def write(tmp_path, text):

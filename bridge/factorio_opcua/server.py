@@ -32,7 +32,7 @@ from .game import GameApi, GameError, RconGame
 from .model import NAMESPACE_URI, AddressSpace, now
 from .rcon import RconError
 
-log = logging.getLogger("factorio_opc")
+log = logging.getLogger("factorio_opcua")
 
 # asyncua's delete_nodes calls an async monitored-item callback without awaiting
 # it. The bridge notifies subscribers itself before deleting (model.py), so the
@@ -71,7 +71,7 @@ def signal_value(variant: ua.Variant | None) -> int | None:
     return value
 
 
-APPLICATION_URI = "urn:factorio-opc:bridge"
+APPLICATION_URI = "urn:factorio-opcua:bridge"
 
 # The user behind the method call being handled (asyncua doesn't pass it to methods).
 CALLING_USER: contextvars.ContextVar[User | None] = contextvars.ContextVar("calling_user", default=None)
@@ -136,7 +136,7 @@ async def ensure_certificate(config: Config) -> tuple[Path, Path]:
         names = [x509.UniformResourceIdentifier(APPLICATION_URI)] + [x509.DNSName(d) for d in dns] + [
             x509.IPAddress(ipaddress.ip_address(i)) for i in ips]
         cert = cert_gen.generate_self_signed_app_certificate(
-            key, "factorio-opc bridge", {"organizationName": "factorio-opc"}, names,
+            key, "factorio-opcua bridge", {"organizationName": "factorio-opcua"}, names,
             extended=[ExtendedKeyUsageOID.SERVER_AUTH, ExtendedKeyUsageOID.CLIENT_AUTH], days=365)
         cert_file.write_bytes(cert.public_bytes(serialization.Encoding.DER))
         log.info("created self-signed OPC UA server certificate %s for %s", cert_file, ", ".join(dns + ips))
@@ -235,7 +235,7 @@ class Bridge:
             game = self._game_factory()
             try:
                 hello = await game.connect()
-                log.info("connected to Factorio %s (opc-io %s) at %s", hello.factorio_version, hello.mod_version, rcon)
+                log.info("connected to Factorio %s (opcua-io %s) at %s", hello.factorio_version, hello.mod_version, rcon)
                 self.game = game
                 self._model_version = None
                 if self._ever_connected:

@@ -1,4 +1,4 @@
-# factorio-opc
+# factorio-opcua
 
 Connect Factorio 2.0 circuit networks to **OPC UA**, the standard protocol
 of industrial automation. SCADA systems, PLCs and OPC clients such as
@@ -6,16 +6,16 @@ Ignition, Node-RED, UaExpert or FreeOpcUa's opcua-client can then read
 signals from your factory and drive it.
 
 ```
-OPC UA client ──opc.tcp──▶ factorio-opc bridge ──RCON──▶ Factorio server + opc-io mod
+OPC UA client ──opc.tcp──▶ factorio-opcua bridge ──RCON──▶ Factorio server + opcua-io mod
 ```
 
 There are two parts:
-- **opc-io** (`mod/opc-io`): a Factorio mod that adds two combinators.
+- **opcua-io** (`mod/opcua-io`): a Factorio mod that adds two combinators.
   - **OPC Reader:** publishes the red and green signals wired to it.
   - **OPC Writer:** outputs signals set by OPC clients.
 
   Each has a tag name, which becomes its name in OPC.
-- **factorio-opc** (`bridge/`): an OPC UA server, written in Python with
+- **factorio-opcua** (`bridge/`): an OPC UA server, written in Python with
   asyncua. It polls the mod over RCON and serves:
   - `Readers/<tag>/{Red,Green,Total}/<signal>`,
   - writable `Writers/<tag>/Signals/<signal>`,
@@ -27,7 +27,7 @@ There are two parts:
 ## Install
 
 Download the latest release from
-[Releases](https://github.com/aelred/factorio-opc/releases). The mod and the
+[Releases](https://github.com/aelred/factorio-opcua/releases). The mod and the
 bridge share a version number; use the same one for both.
 
 ### 1. Run Factorio with the mod and RCON
@@ -35,7 +35,7 @@ bridge share a version number; use the same one for both.
 Choose either option. The bridge works the same with both.
 
 **A. A dedicated server**
-1. Copy `opc-io_<version>.zip` into the server's `mods/` folder. Players
+1. Copy `opcua-io_<version>.zip` into the server's `mods/` folder. Players
    who join download the mod automatically.
 2. Start the server with RCON:
    `factorio --start-server <save> --rcon-port 27015 --rcon-password <pw>`.
@@ -46,7 +46,7 @@ To run the server and the bridge together in Docker, see
 [docs/docker.md](docs/docker.md).
 
 **B. Your own game, hosted from the main menu**
-1. Copy `opc-io_<version>.zip` into your mods folder:
+1. Copy `opcua-io_<version>.zip` into your mods folder:
    - macOS: `~/Library/Application Support/factorio/mods`
    - Windows: `%APPDATA%\Factorio\mods`
    - Linux: `~/.factorio/mods`
@@ -68,16 +68,16 @@ you in the game, auto-pause doesn't apply.
 
 This needs Python 3.11 or newer.
 ```sh
-pipx install factorio_opc-<version>-py3-none-any.whl   # or pip install
-FACTORIO_RCON_PASSWORD=<pw> factorio-opc --rcon-host <server>   # leave out --rcon-host for your own game
+pipx install factorio_opcua-<version>-py3-none-any.whl   # or pip install
+FACTORIO_RCON_PASSWORD=<pw> factorio-opcua --rcon-host <server>   # leave out --rcon-host for your own game
 ```
 For anything beyond a quick try, copy
 [bridge/example.toml](bridge/example.toml) and run
-`factorio-opc --config my.toml`.
+`factorio-opcua --config my.toml`.
 
 ### 3. Connect and build
 
-Connect your OPC UA client to `opc.tcp://127.0.0.1:4840/factorio-opc/`.
+Connect your OPC UA client to `opc.tcp://127.0.0.1:4840/factorio-opcua/`.
 In game, build an OPC Writer or Reader (unlocked by Circuit network), open
 it to name its tag, and wire it into your circuits.
 
@@ -113,12 +113,12 @@ Requires Docker and Python 3.11+.
 
 ```sh
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-scripts/dev-server.sh up          # Factorio 2.0.77 headless + opc-io; RCON on 127.0.0.1:27015
+scripts/dev-server.sh up          # Factorio 2.0.77 headless + opcua-io; RCON on 127.0.0.1:27015
 .venv/bin/pytest                  # unit + integration tests (integration is skipped without the server)
 .venv/bin/pytest -m "not integration"
 .venv/bin/ruff check .            # lint (rules in ruff.toml)
-.venv/bin/factorio-opc --rcon-password-file .dev/factorio/config/rconpw   # bridge on the dev server
-scripts/package-mod.sh            # dist/opc-io_<version>.zip
+.venv/bin/factorio-opcua --rcon-password-file .dev/factorio/config/rconpw   # bridge on the dev server
+scripts/package-mod.sh            # dist/opcua-io_<version>.zip
 scripts/dev-server.sh down
 ```
 
@@ -137,16 +137,16 @@ scripts/dev-server.sh down
 
 - **Never let a Lua error escape.** In multiplayer, an uncaught error in a
   command or event handler stops the whole server. Register RCON commands
-  through `rcon_only` in `mod/opc-io/lib/api.lua`, which turns errors into
+  through `rcon_only` in `mod/opcua-io/lib/api.lua`, which turns errors into
   JSON error replies, and event handlers through `safe` in
-  `mod/opc-io/control.lua`.
+  `mod/opcua-io/control.lua`.
 - **Protocol changes:** when the RCON protocol changes, bump both
-  `api.PROTO` in `mod/opc-io/lib/api.lua` and `PROTO` in
-  `bridge/factorio_opc/game.py`. The bridge refuses to talk to a mod with
+  `api.PROTO` in `mod/opcua-io/lib/api.lua` and `PROTO` in
+  `bridge/factorio_opcua/game.py`. The bridge refuses to talk to a mod with
   a different protocol.
 - **No certificates in tests:** tests that start a `Bridge` should pass
   `security=["none"]` or a temporary `pki_dir`. Otherwise they write a
-  certificate to `~/.factorio-opc`.
+  certificate to `~/.factorio-opcua`.
 
 ## License
 

@@ -36,7 +36,7 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install -r requirements-dev.txt
-      - name: Start Factorio with opc-io (waits until healthy)
+      - name: Start Factorio with opcua-io (waits until healthy)
         run: scripts/dev-server.sh up
       - run: pytest mod/tests/integration   # fails rather than skips without a server, because CI=true
       - name: Server log
@@ -55,7 +55,7 @@ jobs:
       - run: scripts/package-mod.sh
       - run: python -m build bridge --outdir dist
       - name: Bridge Docker image builds
-        run: docker build -t factorio-opc:ci bridge
+        run: docker build -t factorio-opcua:ci bridge
       - uses: actions/upload-artifact@v4
         with:
           name: packages

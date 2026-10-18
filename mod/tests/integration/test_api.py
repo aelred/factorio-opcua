@@ -1,4 +1,4 @@
-"""End-to-end tests of the opc-io RCON API against a live Factorio server."""
+"""End-to-end tests of the opcua-io RCON API against a live Factorio server."""
 
 import pytest
 
@@ -156,14 +156,14 @@ async def test_rename_via_remote_interface(factorio):
     name_b = (await factorio.tag_by_unit(b))["name"]
     before = (await factorio.command("opc_hello"))["model_version"]
 
-    assert await factorio.lua(f'return remote.call("opc-io", "rename", "{name_a}", "boiler_feed")') == ""
+    assert await factorio.lua(f'return remote.call("opcua-io", "rename", "{name_a}", "boiler_feed")') == ""
     assert (await factorio.tag_by_unit(a))["name"] == "boiler_feed"
     assert (await factorio.command("opc_hello"))["model_version"] == before + 1
-    clash = await factorio.lua(f'return remote.call("opc-io", "rename", "{name_b}", "boiler_feed")')
+    clash = await factorio.lua(f'return remote.call("opcua-io", "rename", "{name_b}", "boiler_feed")')
     assert "already used" in clash
-    invalid = await factorio.lua(f'return remote.call("opc-io", "rename", "{name_b}", "has space")')
+    invalid = await factorio.lua(f'return remote.call("opcua-io", "rename", "{name_b}", "has space")')
     assert "may only contain" in invalid
-    assert await factorio.lua(f"return remote.call('opc-io', 'get_name', {factorio.ref(a)})") \
+    assert await factorio.lua(f"return remote.call('opcua-io', 'get_name', {factorio.ref(a)})") \
         == "boiler_feed"
     write = await factorio.command("opc_write", {"tag": "boiler_feed", "signals": {"virtual/signal-A": 1}})
     assert write["ok"] is True

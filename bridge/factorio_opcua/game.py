@@ -1,4 +1,4 @@
-"""Typed wrapper over the opc-io mod's RCON commands (see docs/protocol.md)."""
+"""Typed wrapper over the opcua-io mod's RCON commands (see docs/protocol.md)."""
 
 from __future__ import annotations
 
@@ -95,7 +95,7 @@ def parse_reply(text: str) -> dict:
     try:
         reply = json.loads(text)
     except json.JSONDecodeError:
-        raise GameError(f"reply is not JSON (is opc-io installed?): {text.strip()[:200]}") from None
+        raise GameError(f"reply is not JSON (is opcua-io installed?): {text.strip()[:200]}") from None
     if not isinstance(reply, dict) or "ok" not in reply:
         raise GameError(f"unexpected reply: {text.strip()[:200]}")
     if not reply["ok"]:
@@ -156,7 +156,7 @@ class RconGame:
         try:
             hello = await self.hello()
             if hello.proto != PROTO:
-                raise GameError(f"opc-io speaks protocol {hello.proto}, this bridge needs {PROTO}")
+                raise GameError(f"opcua-io speaks protocol {hello.proto}, this bridge needs {PROTO}")
         except BaseException:
             await self.close()
             raise

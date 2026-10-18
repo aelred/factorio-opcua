@@ -1,4 +1,4 @@
-# Local development server: Factorio 2.0 headless with RCON and the opc-io mod.
+# Local development server: Factorio 2.0 headless with RCON and the opcua-io mod.
 # Start with scripts/dev-server.sh, which copies the mod into .dev/ first.
 services:
   factorio:
@@ -10,7 +10,7 @@ services:
       - "127.0.0.1:27015:27015/tcp"
     volumes:
       - ../.dev/factorio:/factorio
-    # Healthy once RCON answers and opc-io replies to /opc_hello. The image's
+    # Healthy once RCON answers and opcua-io replies to /opc_hello. The image's
     # own `rcon` tool finds the generated password; it exits 0 even for
     # errors, so the check looks for "ok":true in the reply.
     healthcheck:

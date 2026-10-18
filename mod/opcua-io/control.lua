@@ -1,4 +1,4 @@
--- opc-io runtime: tracks OPC Reader/Writer entities and serves the RCON API.
+-- opcua-io runtime: tracks OPC Reader/Writer entities and serves the RCON API.
 
 local api = require("lib.api")
 local gui = require("lib.gui")
@@ -12,8 +12,8 @@ local function safe(handler)
   return function(event)
     local ok, err = pcall(handler, event)
     if not ok then
-      log("[opc-io] event " .. tostring(event.name) .. " failed: " .. tostring(err))
-      game.print("[opc-io] internal error, see factorio-current.log: " .. tostring(err))
+      log("[opcua-io] event " .. tostring(event.name) .. " failed: " .. tostring(err))
+      game.print("[opcua-io] internal error, see factorio-current.log: " .. tostring(err))
     end
   end
 end
@@ -111,7 +111,7 @@ end)
 api.register_commands()
 
 -- For other mods and scripts. Functions return nil on success or an error string.
-remote.add_interface("opc-io", {
+remote.add_interface("opcua-io", {
   get_name = function(entity)
     local entry = entity and entity.valid and registry.get_by_unit(entity.unit_number)
     return entry and entry.name or nil

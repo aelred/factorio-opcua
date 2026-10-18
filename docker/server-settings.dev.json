@@ -1,6 +1,6 @@
 {
-  "name": "factorio-opc dev",
-  "description": "Local dev server for factorio-opc",
+  "name": "factorio-opcua dev",
+  "description": "Local dev server for factorio-opcua",
   "tags": [
     "game",
     "tags"

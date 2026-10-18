@@ -1,6 +1,6 @@
-# opc-io RCON protocol (proto 1)
+# opcua-io RCON protocol (proto 1)
 
-The bridge talks to the `opc-io` mod with ordinary RCON console commands.
+The bridge talks to the `opcua-io` mod with ordinary RCON console commands.
 Each command replies with **one JSON object** containing `"ok"`. Commands
 are rejected when a player types them in game; they only work over RCON.
 
@@ -39,7 +39,7 @@ A signal key is `type/name` or `type/name/quality`:
 Each OPC Reader and OPC Writer entity has a unique **tag name**: 1–64
 characters from `[A-Za-z0-9_.-]`. New entities get `reader-N` or
 `writer-N`. Players rename them in the entity's panel; other mods and
-scripts use `remote.call("opc-io", "rename", old, new)`, which returns
+scripts use `remote.call("opcua-io", "rename", old, new)`, which returns
 `nil` on success or an error string. Blueprints carry the name, and a
 copy whose name is already taken gets `-2`, `-3`, ... appended.
 

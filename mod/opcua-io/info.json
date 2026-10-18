@@ -1,9 +1,9 @@
 {
-  "name": "opc-io",
+  "name": "opcua-io",
   "version": "0.6.0",
   "title": "OPC I/O",
   "author": "aelred",
   "factorio_version": "2.0",
-  "description": "Exposes circuit-network signals to OPC UA clients through the factorio-opc bridge (RCON).",
+  "description": "Exposes circuit-network signals to OPC UA clients through the factorio-opcua bridge (RCON).",
   "dependencies": ["base >= 2.0", "? quality", "? space-age"]
 }

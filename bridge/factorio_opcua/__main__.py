@@ -1,4 +1,4 @@
-"""factorio-opc: run the OPC UA bridge.  `factorio-opc --help`, `factorio-opc hash-password`"""
+"""factorio-opcua: run the OPC UA bridge.  `factorio-opcua --help`, `factorio-opcua hash-password`"""
 
 from __future__ import annotations
 
@@ -18,13 +18,13 @@ from .server import Bridge
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(prog="factorio-opc", description="OPC UA server for Factorio circuit networks",
-                                epilog="'factorio-opc hash-password' makes a password_hash for opcua.users.")
+    p = argparse.ArgumentParser(prog="factorio-opcua", description="OPC UA server for Factorio circuit networks",
+                                epilog="'factorio-opcua hash-password' makes a password_hash for opcua.users.")
     p.add_argument("--config", help="TOML config file")
     p.add_argument("--rcon-host")
     p.add_argument("--rcon-port", type=int)
     p.add_argument("--rcon-password-file", help="file containing the RCON password")
-    p.add_argument("--endpoint", help="OPC UA endpoint URL, e.g. opc.tcp://127.0.0.1:4840/factorio-opc/")
+    p.add_argument("--endpoint", help="OPC UA endpoint URL, e.g. opc.tcp://127.0.0.1:4840/factorio-opcua/")
     p.add_argument("--poll-hz", type=float, help="game polls per second (1-30, default 10)")
     p.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"])
     p.add_argument("--log-format", choices=LOG_FORMATS, help="text (default) or json, one object per line")
@@ -41,20 +41,20 @@ async def run(bridge: Bridge) -> None:
             loop.add_signal_handler(sig, stop.set)
     async with bridge:
         await stop.wait()
-        logging.getLogger("factorio_opc").info("shutting down")
+        logging.getLogger("factorio_opcua").info("shutting down")
 
 
 def hash_password_command() -> int:
     try:
         password = getpass.getpass("Password: ")
         if sys.stdin.isatty() and getpass.getpass("Repeat: ") != password:
-            print("factorio-opc: passwords differ", file=sys.stderr)
+            print("factorio-opcua: passwords differ", file=sys.stderr)
             return 1
     except (EOFError, KeyboardInterrupt):
-        print("\nfactorio-opc: no password entered", file=sys.stderr)
+        print("\nfactorio-opcua: no password entered", file=sys.stderr)
         return 1
     if not password:
-        print("factorio-opc: empty password", file=sys.stderr)
+        print("factorio-opcua: empty password", file=sys.stderr)
         return 1
     print(hash_password(password))
     return 0
@@ -74,7 +74,7 @@ def main(argv: list[str] | None = None) -> int:
             config.rcon_password = read_password_file(args.rcon_password_file)
         config.validate()
     except ConfigError as exc:
-        print(f"factorio-opc: {exc}", file=sys.stderr)
+        print(f"factorio-opcua: {exc}", file=sys.stderr)
         return 2
     setup_logging(args.log_level, config.log_format)
     try:
@@ -82,7 +82,7 @@ def main(argv: list[str] | None = None) -> int:
     except KeyboardInterrupt:
         pass
     except OSError as exc:  # most often: the OPC UA port is already in use
-        print(f"factorio-opc: cannot start OPC UA server on {config.endpoint}: {exc}", file=sys.stderr)
+        print(f"factorio-opcua: cannot start OPC UA server on {config.endpoint}: {exc}", file=sys.stderr)
         return 1
     return 0
 

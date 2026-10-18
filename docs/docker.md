@@ -11,17 +11,17 @@ From a clone of this repository:
 ```sh
 cd deploy
 mkdir -p factorio/mods
-cp /path/to/opc-io_<version>.zip factorio/mods/   # from a GitHub release, or scripts/package-mod.sh
+cp /path/to/opcua-io_<version>.zip factorio/mods/   # from a GitHub release, or scripts/package-mod.sh
 docker compose up -d --wait                       # returns once both are running
 ```
 
-Then connect an OPC UA client to `opc.tcp://127.0.0.1:4840/factorio-opc/`.
+Then connect an OPC UA client to `opc.tcp://127.0.0.1:4840/factorio-opcua/`.
 
 - **Data:** the Factorio server keeps its saves and config in
   `deploy/factorio/`. On first start it creates a map and an RCON password
   (`factorio/config/rconpw`), which the bridge reads.
 - **Startup order:** the bridge starts only once the Factorio service is
-  healthy, meaning RCON answers and opc-io replies to `/opc_hello`. If the
+  healthy, meaning RCON answers and opcua-io replies to `/opc_hello`. If the
   mod is missing from `factorio/mods/`, Factorio stays unhealthy and the
   bridge doesn't start; `docker compose ps` shows this.
 
@@ -58,10 +58,10 @@ Bridge settings are in `deploy/bridge.toml`; restart with
 ## Build and run the image by itself
 
 ```sh
-docker build -t factorio-opc bridge
-docker run --rm -p 127.0.0.1:4840:4840 -v "$PWD/my-bridge.toml:/config/bridge.toml:ro" factorio-opc
+docker build -t factorio-opcua bridge
+docker run --rm -p 127.0.0.1:4840:4840 -v "$PWD/my-bridge.toml:/config/bridge.toml:ro" factorio-opcua
 ```
 
-The image's command is `factorio-opc --config /config/bridge.toml`. Any
+The image's command is `factorio-opcua --config /config/bridge.toml`. Any
 other arguments replace that, for example
-`docker run --rm factorio-opc --version`.
+`docker run --rm factorio-opcua --version`.

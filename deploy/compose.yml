@@ -1,8 +1,8 @@
-# Factorio 2.0 headless server + factorio-opc bridge. See docs/docker.md.
+# Factorio 2.0 headless server + factorio-opcua bridge. See docs/docker.md.
 #
-#   1. Put the opc-io mod zip in ./factorio/mods/ (create the folder).
+#   1. Put the opcua-io mod zip in ./factorio/mods/ (create the folder).
 #   2. docker compose up -d       (first start generates the map and ./factorio/config/)
-#   3. Connect an OPC UA client to opc.tcp://127.0.0.1:4840/factorio-opc/
+#   3. Connect an OPC UA client to opc.tcp://127.0.0.1:4840/factorio-opcua/
 services:
   factorio:
     image: factoriotools/factorio:2.0.77
@@ -13,7 +13,7 @@ services:
       - "34197:34197/udp"        # game port for players; RCON stays on the internal network
     volumes:
       - ./factorio:/factorio
-    # Healthy once RCON answers and opc-io replies to /opc_hello. The image's
+    # Healthy once RCON answers and opcua-io replies to /opc_hello. The image's
     # own `rcon` tool finds the generated password; it exits 0 even for
     # errors, so the check looks for "ok":true in the reply.
     healthcheck:
@@ -29,7 +29,7 @@ services:
     restart: unless-stopped
     depends_on:
       factorio:
-        condition: service_healthy   # RCON up and opc-io loaded
+        condition: service_healthy   # RCON up and opcua-io loaded
     ports:
       # Published on this machine only. To serve the network, change this to
       # "4840:4840" AND tighten bridge.toml first (docs/security.md).

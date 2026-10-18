@@ -1,4 +1,4 @@
-"""Fixtures for tests against a live Factorio server running opc-io.
+"""Fixtures for tests against a live Factorio server running opcua-io.
 
 Uses the dev server by default (scripts/dev-server.sh up). Override with
 FACTORIO_RCON_HOST, FACTORIO_RCON_PORT and FACTORIO_RCON_PASSWORD.
@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pytest
 
-from factorio_opc.rcon import RconClient
+from factorio_opcua.rcon import RconClient
 
 REPO = Path(__file__).resolve().parents[3]
 PASSWORD_FILE = REPO / ".dev" / "factorio" / "config" / "rconpw"

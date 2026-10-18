@@ -1,9 +1,9 @@
 # OPC UA address space
 
-Endpoint (default): `opc.tcp://127.0.0.1:4840/factorio-opc/`. Encryption,
+Endpoint (default): `opc.tcp://127.0.0.1:4840/factorio-opcua/`. Encryption,
 logins and read-only users are described in [security.md](security.md).
 
-Everything lives in the namespace **`urn:factorio-opc`**. Look up its index
+Everything lives in the namespace **`urn:factorio-opcua`**. Look up its index
 at runtime; it is usually 2. NodeIds are strings that spell out the path,
 so clients can address nodes directly, for example
 `ns=2;s=Readers/line_1/Red/item/iron-plate`.
@@ -15,7 +15,7 @@ Objects/Factorio/
     GameTick           UInt64
     TickPaused         Boolean
     GameSpeed          Double
-    ModVersion         String    opc-io version
+    ModVersion         String    opcua-io version
     FactorioVersion    String
     ModelVersion       UInt32    changes when tags are added, removed or renamed
     LastPollLatencyMs  Double    round-trip of the last poll
@@ -103,7 +103,7 @@ Right-click `SetSignals` and choose **Call**.
 **asyncua's `uacall`** is installed alongside the bridge. Prefix the method
 name with the namespace index (`2:`), or you'll get `BadNoMatch`:
 ```sh
-uacall -u opc.tcp://127.0.0.1:4840/factorio-opc/ -n "ns=2;s=Writers/press" \
+uacall -u opc.tcp://127.0.0.1:4840/factorio-opcua/ -n "ns=2;s=Writers/press" \
        -m 2:SetSignals '{"item/iron-plate": 5}'            # merge
 uacall ... -m 2:SetSignals '{"item/iron-plate": 5},replace'  # replace
 uacall ... -m 2:ClearAll
@@ -127,8 +127,8 @@ import asyncio, json
 from asyncua import Client, ua
 
 async def main():
-    async with Client("opc.tcp://127.0.0.1:4840/factorio-opc/") as c:
-        ns = await c.get_namespace_index("urn:factorio-opc")
+    async with Client("opc.tcp://127.0.0.1:4840/factorio-opcua/") as c:
+        ns = await c.get_namespace_index("urn:factorio-opcua")
         writer = c.get_node(ua.NodeId("Writers/press", ns))
         print(await writer.call_method(ua.NodeId("Writers/press/SetSignals", ns),
                                        json.dumps({"item/iron-plate": 5, "virtual/signal-A": 1}), "merge"))

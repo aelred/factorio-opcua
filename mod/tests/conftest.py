@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from lupa import lua52
 
-MOD_DIR = Path(__file__).resolve().parents[1] / "opc-io"
+MOD_DIR = Path(__file__).resolve().parents[1] / "opcua-io"
 
 
 @pytest.fixture

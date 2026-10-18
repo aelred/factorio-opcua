@@ -10,16 +10,16 @@ from asyncua.crypto.cert_gen import setup_self_signed_certificate
 from asyncua.crypto.security_policies import SecurityPolicyBasic256Sha256
 from cryptography.x509.oid import ExtendedKeyUsageOID
 
-from factorio_opc import server as server_module
-from factorio_opc.__main__ import main
-from factorio_opc.auth import hash_password, verify_password
-from factorio_opc.config import Config, ConfigError, UserConfig, load_config
-from factorio_opc.server import Bridge
+from factorio_opcua import server as server_module
+from factorio_opcua.__main__ import main
+from factorio_opcua.auth import hash_password, verify_password
+from factorio_opcua.config import Config, ConfigError, UserConfig, load_config
+from factorio_opcua.server import Bridge
 
 from fake_game import FakeGame, FakeWorld
 from helpers import eventually, free_port
 
-NS = "urn:factorio-opc"
+NS = "urn:factorio-opcua"
 USERS = [UserConfig("alice", "write", hash_password("alice-pw")), UserConfig("bob", "read", hash_password("bob-pw"))]
 
 
@@ -37,7 +37,7 @@ async def make_bridge(world, tmp_path, monkeypatch):
     bridges = []
 
     async def make(**overrides):
-        config = Config(rcon_password="x", endpoint=f"opc.tcp://127.0.0.1:{free_port()}/factorio-opc/",
+        config = Config(rcon_password="x", endpoint=f"opc.tcp://127.0.0.1:{free_port()}/factorio-opcua/",
                         poll_hz=30, pki_dir=str(tmp_path / "pki"), users=USERS, **overrides)
         bridge = Bridge(config.validate(), game_factory=lambda: FakeGame(world))
         await bridge.start()
@@ -85,7 +85,7 @@ async def try_write_and_call(client):
 def client_cert(tmp_path):
     cert, key = tmp_path / "client_cert.der", tmp_path / "client_key.pem"
     asyncio.run(setup_self_signed_certificate(
-        key, cert, "urn:factorio-opc:test-client", "localhost", [ExtendedKeyUsageOID.CLIENT_AUTH],
+        key, cert, "urn:factorio-opcua:test-client", "localhost", [ExtendedKeyUsageOID.CLIENT_AUTH],
         {"commonName": "test client"}))
     return cert, key
 
@@ -127,7 +127,7 @@ async def test_users_and_roles(make_bridge, world, caplog):
 
     alice = await connect(bridge, "alice", "alice-pw")
     try:
-        with caplog.at_level("INFO", logger="factorio_opc"):
+        with caplog.at_level("INFO", logger="factorio_opcua"):
             assert await try_write_and_call(alice) == (ua.StatusCodes.Good, ua.StatusCodes.Good)
     finally:
         await alice.disconnect()
@@ -170,7 +170,7 @@ async def test_certificate_covers_machine_names(tmp_path):
 
     from cryptography import x509
 
-    from factorio_opc.server import ensure_certificate
+    from factorio_opcua.server import ensure_certificate
 
     config = Config(rcon_password="x", endpoint="opc.tcp://192.0.2.7:4840/x/", pki_dir=str(tmp_path / "pki"))
     cert_file, _ = await ensure_certificate(config)
@@ -178,7 +178,7 @@ async def test_certificate_covers_machine_names(tmp_path):
         x509.SubjectAlternativeName).value
     assert {socket.gethostname(), "localhost"} <= set(san.get_values_for_type(x509.DNSName))
     assert {"127.0.0.1", "192.0.2.7"} <= {str(i) for i in san.get_values_for_type(x509.IPAddress)}
-    assert "urn:factorio-opc:bridge" in san.get_values_for_type(x509.UniformResourceIdentifier)
+    assert "urn:factorio-opcua:bridge" in san.get_values_for_type(x509.UniformResourceIdentifier)
     # A new endpoint address that the certificate doesn't cover gets a new certificate (same key).
     before = cert_file.read_bytes()
     config.endpoint = "opc.tcp://192.0.2.8:4840/x/"

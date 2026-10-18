@@ -1,9 +1,9 @@
-"""In-memory stand-in for the opc-io mod, implementing GameApi."""
+"""In-memory stand-in for the opcua-io mod, implementing GameApi."""
 
 from __future__ import annotations
 
-from factorio_opc.game import GameError, Hello, Poll, ReaderValues, Tag
-from factorio_opc.rcon import RconError
+from factorio_opcua.game import GameError, Hello, Poll, ReaderValues, Tag
+from factorio_opcua.rcon import RconError
 
 
 class FakeWorld:

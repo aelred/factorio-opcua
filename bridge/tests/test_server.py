@@ -6,14 +6,14 @@ import json
 import pytest
 from asyncua import Client, ua
 
-from factorio_opc import server as server_module
-from factorio_opc.config import Config
-from factorio_opc.server import Bridge
+from factorio_opcua import server as server_module
+from factorio_opcua.config import Config
+from factorio_opcua.server import Bridge
 
 from fake_game import FakeGame, FakeWorld
 from helpers import eventually, free_port
 
-NS = "urn:factorio-opc"
+NS = "urn:factorio-opcua"
 
 
 @pytest.fixture
@@ -30,7 +30,7 @@ def world():
 async def bridge(world, monkeypatch):
     monkeypatch.setattr(server_module, "BACKOFF_START", 0.05)
     monkeypatch.setattr(server_module, "BACKOFF_MAX", 0.1)
-    config = Config(rcon_password="x", endpoint=f"opc.tcp://127.0.0.1:{free_port()}/factorio-opc/", poll_hz=30,
+    config = Config(rcon_password="x", endpoint=f"opc.tcp://127.0.0.1:{free_port()}/factorio-opcua/", poll_hz=30,
                     security=["none"])
     b = Bridge(config, game_factory=lambda: FakeGame(world))
     await b.start()
@@ -330,7 +330,7 @@ async def test_model_change_events_for_added_and_removed_tags(client, world):
 
 
 def test_model_change_message_names_tags():
-    from factorio_opc.model import VERB_ADDED, VERB_DELETED, describe_changes
+    from factorio_opcua.model import VERB_ADDED, VERB_DELETED, describe_changes
 
     def change(path, type_id, verb):
         return ua.ModelChangeStructureDataType(Affected=ua.NodeId(path, 2), AffectedType=ua.NodeId(type_id), Verb=verb)
@@ -410,7 +410,7 @@ async def test_metrics(client, world):
 async def test_writes_are_audit_logged(client, world, caplog):
     target = node(client, "Writers/press/Signals/virtual/signal-B")
     await eventually(lambda: target.read_value())
-    with caplog.at_level("INFO", logger="factorio_opc"):
+    with caplog.at_level("INFO", logger="factorio_opcua"):
         await target.write_value(ua.DataValue(ua.Variant(9, ua.VariantType.Int32)))
         await node(client, "Writers/press").call_method(ua.NodeId("Writers/press/SetSignals", client.ns),
                                                        '{"item/iron-plate": 2}')
@@ -424,9 +424,9 @@ async def test_writes_are_audit_logged(client, world, caplog):
 def test_json_log_format():
     import logging
 
-    from factorio_opc.logs import JsonFormatter
+    from factorio_opcua.logs import JsonFormatter
 
-    record = logging.LogRecord("factorio_opc", logging.INFO, __file__, 1, "write %s", ("press",), None)
+    record = logging.LogRecord("factorio_opcua", logging.INFO, __file__, 1, "write %s", ("press",), None)
     record.tag, record.user = "press", "alice"
     entry = json.loads(JsonFormatter().format(record))
     assert entry["message"] == "write press" and entry["level"] == "INFO"

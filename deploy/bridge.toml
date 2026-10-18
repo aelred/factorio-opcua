@@ -11,7 +11,7 @@ rcon_password_file = "/factorio-config/rconpw"  # written by the Factorio contai
 # 127.0.0.1 only; that is why allow_insecure is acceptable here. If you
 # publish the port to your network, set anonymous = "none" and add users, or
 # drop "none" from security, and remove allow_insecure.
-endpoint = "opc.tcp://0.0.0.0:4840/factorio-opc/"
+endpoint = "opc.tcp://0.0.0.0:4840/factorio-opcua/"
 security = ["none", "sign_encrypt"]
 anonymous = "write"
 allow_insecure = true
