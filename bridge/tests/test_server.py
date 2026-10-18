@@ -431,3 +431,41 @@ def test_json_log_format():
     entry = json.loads(JsonFormatter().format(record))
     assert entry["message"] == "write press" and entry["level"] == "INFO"
     assert entry["tag"] == "press" and entry["user"] == "alice" and "time" in entry
+
+
+async def test_a_few_poll_timeouts_do_not_reconnect(bridge, world, monkeypatch):
+    monkeypatch.setattr(server_module, "MAX_POLL_TIMEOUTS", 3)
+    world.poll_timeouts = 2  # the game is busy, e.g. saving
+    polls = len(world.polls)
+
+    async def polled_again():
+        assert len(world.polls) > polls + 2
+
+    await eventually(polled_again)
+    assert world.connections == 1
+
+    world.poll_timeouts = 3
+
+    async def reconnected():
+        assert world.connections == 2
+
+    await eventually(reconnected)
+
+
+async def test_game_loop_survives_errors_while_marking_stale(bridge, world, monkeypatch):
+    async def broken():
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(bridge.model, "mark_stale", broken)
+    world.reachable = False
+
+    async def disconnected():
+        assert not bridge.connected.is_set()
+
+    await eventually(disconnected)
+    world.reachable = True
+
+    async def reconnected():
+        assert bridge.connected.is_set() and world.connections >= 2
+
+    await eventually(reconnected)

@@ -33,6 +33,19 @@ local function on_destroyed(event)
   end
 end
 
+-- A combinator that dies leaves a ghost (when the force has ghosts on death);
+-- store the tag name on it so the rebuilt entity keeps its name. The registry
+-- entry is still there: on_object_destroyed only fires at the end of the tick.
+local function on_post_entity_died(event)
+  local ghost = event.ghost
+  local entry = event.unit_number and registry.get_by_unit(event.unit_number)
+  if ghost and ghost.valid and entry then
+    local tags = ghost.tags or {}
+    tags[BLUEPRINT_TAG] = entry.name
+    ghost.tags = tags
+  end
+end
+
 local function on_settings_pasted(event)
   local entity = event.destination
   local kind = entity and entity.valid and registry.KIND_BY_ENTITY[entity.name]
@@ -77,6 +90,8 @@ for _, id in pairs({
 end
 
 script.on_event(defines.events.on_object_destroyed, safe(on_destroyed))
+script.on_event(defines.events.on_post_entity_died, safe(on_post_entity_died),
+  { { filter = "type", type = "constant-combinator" } })
 script.on_event(defines.events.on_entity_settings_pasted, safe(on_settings_pasted))
 script.on_event(defines.events.on_player_setup_blueprint, safe(on_setup_blueprint))
 script.on_event(defines.events.on_gui_opened, safe(gui.on_opened))

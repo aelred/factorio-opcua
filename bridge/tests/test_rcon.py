@@ -2,6 +2,7 @@ import asyncio
 
 import pytest
 
+from factorio_opc.game import GameError, RconGame
 from factorio_opc.rcon import (
     SERVERDATA_AUTH,
     SERVERDATA_AUTH_RESPONSE,
@@ -18,8 +19,9 @@ from factorio_opc.rcon import (
 class FakeFactorio:
     """Behaves like Factorio's RCON: one reply packet per command, in order."""
 
-    def __init__(self, password="secret", replies=None, delays=None):
+    def __init__(self, password="secret", replies=None, delays=None, auth_delay=0):
         self.password = password
+        self.auth_delay = auth_delay
         self.replies = replies or {}
         self.delays = delays or {}
         self.server = None
@@ -40,6 +42,7 @@ class FakeFactorio:
         try:
             request_id, packet_type, body = await read_packet(reader)
             assert packet_type == SERVERDATA_AUTH
+            await asyncio.sleep(self.auth_delay)
             ok = body == self.password
             writer.write(encode_packet(request_id if ok else -1, SERVERDATA_AUTH_RESPONSE, ""))
             await writer.drain()
@@ -113,3 +116,31 @@ async def test_server_disconnect_fails_pending_and_later_calls():
     with pytest.raises(RconError):
         await client.execute("/opc_hello")
     await client.close()
+
+
+async def test_failed_connect_closes_the_connection():
+    server = FakeFactorio(replies={"/opc_hello": "Unknown command \"opc_hello\"."}, auth_delay=0)
+    port = await server.start()
+    try:
+        game = RconGame("127.0.0.1", port, "secret")
+        with pytest.raises(GameError):
+            await game.connect()  # opc-io not installed
+        assert game._client._writer is None
+
+        server.auth_delay = 1
+        client = RconClient("127.0.0.1", port, "secret", timeout=0.1)
+        with pytest.raises(TimeoutError):
+            await client.connect()
+        assert client._writer is None
+    finally:
+        await server.stop()
+
+
+async def test_failed_send_leaves_no_pending_request(fake):
+    async with RconClient("127.0.0.1", fake.port, "secret") as client:
+        async def broken():
+            raise ConnectionResetError("gone")
+        client._writer.drain = broken
+        with pytest.raises(ConnectionResetError):
+            await client.execute("/opc_hello")
+        assert client._pending == {}

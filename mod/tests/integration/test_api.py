@@ -128,6 +128,27 @@ async def test_blueprint_tag_sets_name_and_collisions_get_suffix(factorio):
     assert (await factorio.tag_by_unit(bad))["name"].startswith("reader-")
 
 
+
+@pytest.mark.parametrize("kind", ["reader", "writer"])
+async def test_name_survives_death_and_rebuild_from_ghost(factorio, kind):
+    unit = await factorio.create(kind, 76, 10, tags={"opc_name": f"{kind}_survivor"})
+    await factorio.lua("game.forces.player.create_ghost_on_entity_death = true")
+    await factorio.lua(f'{factorio.ref(unit)}.die("enemy")')
+    rebuilt = await factorio.lua(
+        f'local g = game.surfaces.nauvis.find_entity("entity-ghost", {{76.5, 10.5}}) '
+        "local _, e = g.revive{raise_revive=true} return e.unit_number")
+    await factorio.ticks()
+    assert (await factorio.tag_by_unit(int(rebuilt)))["name"] == f"{kind}_survivor"
+
+
+async def test_write_repairs_a_writer_whose_section_was_removed(factorio):
+    unit = await factorio.create("writer", 78, 10)
+    name = (await factorio.tag_by_unit(unit))["name"]
+    await factorio.lua(f"{factorio.ref(unit)}.get_control_behavior().remove_section(1)")
+    write = await factorio.command("opc_write", {"tag": name, "signals": {"virtual/signal-A": 4}})
+    assert write["ok"] is True
+    assert (await factorio.values())["writers"][name] == {"virtual/signal-A": 4}
+
 async def test_rename_via_remote_interface(factorio):
     a = await factorio.create("writer", 80, 10)
     b = await factorio.create("writer", 82, 10)

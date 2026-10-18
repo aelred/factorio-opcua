@@ -17,9 +17,16 @@ That's convenient for local testing. To listen on the network, change the
 endpoint host to `0.0.0.0` or a specific address. In that case the bridge
 **refuses to start** while unencrypted anonymous access is still allowed.
 Fix that with one of:
-- `anonymous = "none"`, plus users (recommended),
-- `security = ["sign_encrypt"]` (encrypted only), or
+- `security = ["sign_encrypt"]`, plus users and `anonymous = "none"`
+  (recommended: every connection is encrypted and needs a login),
+- `anonymous = "none"`, plus users, keeping the `none` endpoint, or
 - `allow_insecure = true` (accept the risk; the bridge logs a warning).
+
+With the `none` endpoint, logins are encrypted, but the traffic after them
+is not, so someone on the network path could read or change it. The bridge
+also refuses to start when users are configured on the network with `none`
+but without `sign_encrypt`, because their passwords would then travel
+unencrypted.
 
 ## Security modes
 
@@ -78,10 +85,11 @@ role = "read"              # the default
 - **Password hashes:** `factorio-opc hash-password` asks for a password and
   prints the hash for `password_hash`. A plain `password = "..."` is also
   accepted, but it puts the password in the config file.
-- **Password transport:** passwords are sent encrypted whenever the bridge
-  has a certificate, which it does when `security` includes `sign` or
-  `sign_encrypt`, even if the client uses the `none` endpoint. Without a
-  certificate they travel in plain text.
+- **Password transport:** on the `sign` and `sign_encrypt` endpoints,
+  passwords are always encrypted. On the `none` endpoint they are encrypted
+  only when `security` also includes `sign_encrypt`; otherwise they travel
+  in plain text, which the bridge allows only on a local endpoint or with
+  `allow_insecure`.
 
 ## Audit log
 

@@ -17,6 +17,7 @@ class FakeWorld:
         self.writers: dict[str, dict[str, int]] = {}
         self.writes: list[tuple[str, dict[str, int], str]] = []
         self.reachable = True
+        self.poll_timeouts = 0  # polls that raise TimeoutError, as when the game is busy saving
         self.reject_writes: str | None = None
         self.connections = 0
         self.polls: list[Poll] = []          # every poll reply, for assertions
@@ -78,6 +79,9 @@ class FakeGame:
     async def poll(self, session: str, ack: int | None) -> Poll:
         """Same semantics as the mod's lib/poll.lua."""
         self._check()
+        if self.world.poll_timeouts:
+            self.world.poll_timeouts -= 1
+            raise TimeoutError
         w = self.world
         current = {"readers": {k: ReaderValues(dict(v.red), dict(v.green)) for k, v in w.readers.items()},
                    "writers": {k: dict(v) for k, v in w.writers.items()}}

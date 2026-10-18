@@ -8,6 +8,7 @@ import contextvars
 import ipaddress
 import json
 import logging
+import os
 import socket
 import time
 import uuid
@@ -40,6 +41,10 @@ warnings.filterwarnings("ignore", message="coroutine 'MonitoredItemService.datac
 
 BACKOFF_START = 1.0
 BACKOFF_MAX = 30.0
+# Polls in a row that may time out before the bridge reconnects. The game
+# doesn't answer while it saves, which on a big map can take longer than
+# rcon_timeout.
+MAX_POLL_TIMEOUTS = 3
 
 INT32_MIN, INT32_MAX = -(2**31), 2**31 - 1
 NUMERIC_TYPES = {
@@ -117,11 +122,13 @@ async def ensure_certificate(config: Config) -> tuple[Path, Path]:
     if config.certificate and config.private_key:
         return Path(config.certificate), Path(config.private_key)
     pki = Path(config.pki_dir).expanduser()
-    pki.mkdir(parents=True, exist_ok=True)
+    pki.mkdir(mode=0o700, parents=True, exist_ok=True)
     cert_file, key_file = pki / "server_cert.der", pki / "server_key.pem"
     dns, ips = _certificate_names(config)
     if not key_file.is_file():
-        key_file.write_bytes(cert_gen.dump_private_key_as_pem(cert_gen.generate_private_key()))
+        pem = cert_gen.dump_private_key_as_pem(cert_gen.generate_private_key())
+        with os.fdopen(os.open(key_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "wb") as f:
+            f.write(pem)
         cert_file.unlink(missing_ok=True)
     key_file.chmod(0o600)
     if _needs_new_certificate(cert_file, dns, ips):
@@ -191,6 +198,10 @@ class Bridge:
                 and config.anonymous != "none":
             log.warning("allow_insecure: anyone who can reach %s gets %s access without encryption",
                         config.endpoint, config.anonymous)
+        if config.allow_insecure and not config.endpoint_is_local and "none" in config.security \
+                and config.users and "sign_encrypt" not in config.security:
+            log.warning("allow_insecure: passwords sent to %s on the 'none' endpoint are not encrypted",
+                        config.endpoint)
 
     async def stop(self) -> None:
         if self._task is not None:
@@ -242,7 +253,10 @@ class Bridge:
                 else:
                     log.info("cannot reach Factorio at %s (%s); retrying in %.0fs", rcon, exc, backoff)
                 await self._disconnect()
-                await self.model.mark_stale()
+                try:
+                    await self.model.mark_stale()
+                except Exception:
+                    log.exception("cannot mark values stale")
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, BACKOFF_MAX)
 
@@ -258,9 +272,18 @@ class Bridge:
         next_at = loop.time()
         session = uuid.uuid4().hex
         ack: int | None = None
+        timeouts = 0
         while True:
             start = time.perf_counter()
-            poll = await game.poll(session, ack)
+            try:
+                poll = await game.poll(session, ack)
+            except TimeoutError:
+                timeouts += 1
+                if timeouts >= MAX_POLL_TIMEOUTS:
+                    raise
+                log.warning("Factorio did not answer a poll within %gs (saving?); waiting", self.config.rcon_timeout)
+                continue
+            timeouts = 0
             received = now()
             latency_ms = (time.perf_counter() - start) * 1000
             if poll.full or poll.model_version != self._model_version:

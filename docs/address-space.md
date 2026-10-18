@@ -63,7 +63,9 @@ same strings.
 - If the connection to the game drops, every signal keeps its last value
   with status **`Uncertain_NoCommunicationLastUsableValue`**, and
   `Status/Connected` becomes false. Values return to Good after reconnecting
-  (with backoff from 1 s up to 30 s).
+  (with backoff from 1 s up to 30 s). A slow game, such as one saving a big
+  map, only counts as dropped after 3 polls in a row time out
+  (`rcon_timeout`, 5 s each by default).
 
 ## Writing
 - A write to `Writers/<tag>/Signals/<signal>` is passed straight to the game.

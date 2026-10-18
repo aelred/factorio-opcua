@@ -72,6 +72,15 @@ class RconClient:
         self._reader, self._writer = await asyncio.wait_for(
             asyncio.open_connection(self.host, self.port), self.timeout
         )
+        try:
+            await self._authenticate()
+        except BaseException:
+            await self.close()
+            raise
+        self._read_task = asyncio.create_task(self._read_loop())
+
+    async def _authenticate(self) -> None:
+        assert self._reader is not None and self._writer is not None
         auth_id = next(self._ids)
         self._writer.write(encode_packet(auth_id, SERVERDATA_AUTH, self._password))
         await self._writer.drain()
@@ -82,11 +91,9 @@ class RconClient:
             if packet_type != SERVERDATA_AUTH_RESPONSE:
                 continue  # some servers send an empty RESPONSE_VALUE first
             if request_id == -1:
-                await self.close()
                 raise RconAuthError("RCON authentication failed")
             if request_id == auth_id:
-                break
-        self._read_task = asyncio.create_task(self._read_loop())
+                return
 
     async def _read_loop(self) -> None:
         assert self._reader is not None
@@ -112,9 +119,9 @@ class RconClient:
         request_id = next(self._ids)
         future: asyncio.Future[str] = asyncio.get_running_loop().create_future()
         self._pending[request_id] = future
-        self._writer.write(encode_packet(request_id, SERVERDATA_EXECCOMMAND, command))
-        await self._writer.drain()
         try:
+            self._writer.write(encode_packet(request_id, SERVERDATA_EXECCOMMAND, command))
+            await self._writer.drain()
             return await asyncio.wait_for(future, self.timeout)
         finally:
             self._pending.pop(request_id, None)

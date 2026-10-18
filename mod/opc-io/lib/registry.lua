@@ -102,7 +102,11 @@ end
 -- Writers' output is cached in entry.values: the mod is the only thing that
 -- changes it (pastes are normalized), and audit_writers catches anything else.
 function registry.set_writer_values(entry, map)
-  control(entry.entity).get_section(1).filters = signals.to_filters(map)
+  local cb = control(entry.entity)
+  if cb.sections_count ~= 1 then -- e.g. another mod's script removed the section
+    registry.normalize(entry.entity, "writer")
+  end
+  cb.get_section(1).filters = signals.to_filters(map)
   entry.values = copy(map)
 end
 

@@ -153,10 +153,13 @@ class RconGame:
 
     async def connect(self) -> Hello:
         await self._client.connect()
-        hello = await self.hello()
-        if hello.proto != PROTO:
+        try:
+            hello = await self.hello()
+            if hello.proto != PROTO:
+                raise GameError(f"opc-io speaks protocol {hello.proto}, this bridge needs {PROTO}")
+        except BaseException:
             await self.close()
-            raise GameError(f"opc-io speaks protocol {hello.proto}, this bridge needs {PROTO}")
+            raise
         return hello
 
     async def close(self) -> None:

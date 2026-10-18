@@ -6,6 +6,8 @@ rcon_host = "127.0.0.1"
 rcon_port = 27015
 # Relative paths are resolved from this file's folder.
 rcon_password_file = "rconpw"
+# Seconds to wait for each reply. The game doesn't answer while it saves; the
+# bridge reconnects only after 3 polls in a row time out.
 rcon_timeout = 5.0
 
 [opcua]

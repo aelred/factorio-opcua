@@ -141,6 +141,7 @@ async def test_encrypted_endpoint_with_generated_certificate(make_bridge, client
     pki = tmp_path / "pki"
     assert (pki / "server_cert.der").is_file()
     assert stat.S_IMODE(os.stat(pki / "server_key.pem").st_mode) == 0o600
+    assert stat.S_IMODE(os.stat(pki).st_mode) == 0o700
 
     endpoints = await Client(bridge.config.endpoint).connect_and_get_server_endpoints()
     modes = {e.SecurityMode for e in endpoints}
@@ -226,6 +227,8 @@ password_hash = "{hash_password("v")}"
     ('[[opcua.users]]\nname = "a"\npassword = "x"\n[[opcua.users]]\nname = "a"\npassword = "y"\n', "twice"),
     ('[opcua]\ncertificate = "c.der"\n', "both"),
     ('[opcua]\nendpoint = "opc.tcp://0.0.0.0:4840/x/"\n', "reachable from the network"),
+    ('[opcua]\nendpoint = "opc.tcp://0.0.0.0:4840/x/"\nanonymous = "none"\nsecurity = ["none", "sign"]\n'
+     '[[opcua.users]]\nname = "a"\npassword = "x"\n', "passwords would be sent unencrypted"),
 ])
 def test_config_validation(tmp_path, text, message):
     path = tmp_path / "bridge.toml"
@@ -237,6 +240,7 @@ def test_config_validation(tmp_path, text, message):
 @pytest.mark.parametrize("extra", [
     'allow_insecure = true',                  # accepted explicitly
     'security = ["sign_encrypt"]',            # encrypted only
+    'anonymous = "none"\n[[opcua.users]]\nname = "a"\npassword = "x"',  # users; logins encrypted by default
 ])
 def test_network_endpoint_allowed_when_safe_or_explicit(tmp_path, extra):
     path = tmp_path / "bridge.toml"
@@ -257,3 +261,16 @@ def test_hash_password_command_without_input(capsys, monkeypatch):
     monkeypatch.setattr("getpass.getpass", no_input)
     assert main(["hash-password"]) == 1
     assert "no password entered" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("security, encrypted", [
+    (["none", "sign_encrypt"], True),
+    (["none", "sign"], False),  # why config validation insists on sign_encrypt for users on the network
+])
+async def test_password_policy_on_the_none_endpoint(make_bridge, security, encrypted):
+    bridge = await make_bridge(security=security)
+    endpoints = await Client(bridge.config.endpoint).connect_and_get_server_endpoints()
+    none = next(e for e in endpoints if e.SecurityMode == ua.MessageSecurityMode.None_)
+    token = next(t for t in none.UserIdentityTokens if t.TokenType == ua.UserTokenType.UserName)
+    plain = (token.SecurityPolicyUri or "#None").endswith("#None")
+    assert plain is not encrypted

@@ -116,6 +116,14 @@ class Config:
                 f"endpoint {self.endpoint} is reachable from the network with security 'none' and anonymous "
                 f"'{self.anonymous}' access. Remove 'none' from opcua.security, set opcua.anonymous = \"none\" "
                 "and add users, or set opcua.allow_insecure = true to accept the risk")
+        # On the 'none' endpoint, asyncua encrypts the login only when a
+        # sign_encrypt policy exists; otherwise passwords cross the network in clear.
+        if (not self.endpoint_is_local and "none" in self.security and "sign_encrypt" not in self.security
+                and self.users and not self.allow_insecure):
+            raise ConfigError(
+                f"endpoint {self.endpoint} is reachable from the network with security 'none' and users, but "
+                "without 'sign_encrypt' their passwords would be sent unencrypted. Add 'sign_encrypt' to "
+                "opcua.security, remove 'none', or set opcua.allow_insecure = true to accept the risk")
         return self
 
 
