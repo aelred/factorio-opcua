@@ -6,12 +6,12 @@ Ignition, Node-RED, UaExpert or FreeOpcUa's opcua-client can then read
 signals from your factory and drive it.
 
 ```
-                                                ┌────────┐ 
-                                                │Factorio│ 
- ┌─────────────┐          ┌─bridge───────┐      │┌─mod──┐│ 
- │OPC UA client├─opc.tcp─►│factorio-opcua│─RCON─►│opc-io││ 
- └─────────────┘          └──────────────┘      │└──────┘│ 
-                                                └────────┘ 
+                                                ┌──────────┐
+                                                │ Factorio │
+ ┌─────────────┐          ┌─bridge───────┐      │┌─mod────┐│
+ │OPC UA client├─opc.tcp─►│factorio-opcua│─RCON─►│opcua-io││
+ └─────────────┘          └──────────────┘      │└────────┘│
+                                                └──────────┘
 ```
 
 There are two parts:
