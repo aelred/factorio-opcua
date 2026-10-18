@@ -63,14 +63,18 @@ class Factorio:
     async def create(self, kind: str, x: float, y: float, tags: dict | None = None) -> int:
         """Build an OPC entity (via a ghost revive when tags are given); returns its unit number."""
         name = f"opc-{kind}"
+        # The map is random, so first clear the tile of trees, rocks and water:
+        # a ghost revive fails if anything is in the way.
+        clear = (f'local s = game.surfaces.nauvis s.set_tiles{{{{name="grass-1", position={{{x},{y}}}}}}} '
+                 f'for _, o in pairs(s.find_entities{{{{{x},{y}}}, {{{x + 1},{y + 1}}}}}) do o.destroy() end ')
         if tags is None:
-            code = (f'local e = game.surfaces.nauvis.create_entity{{name="{name}", position={{{x},{y}}}, '
-                    f'force="player", raise_built=true}} return e.unit_number')
+            code = clear + (f'local e = s.create_entity{{name="{name}", position={{{x},{y}}}, '
+                            f'force="player", raise_built=true}} return e.unit_number')
         else:
             lua_tags = "{" + ", ".join(f'{k}="{v}"' for k, v in tags.items()) + "}"
-            code = (f'local g = game.surfaces.nauvis.create_entity{{name="entity-ghost", inner_name="{name}", '
-                    f'position={{{x},{y}}}, force="player", tags={lua_tags}}} '
-                    f'local _, e = g.revive{{raise_revive=true}} return e.unit_number')
+            code = clear + (f'local g = s.create_entity{{name="entity-ghost", inner_name="{name}", '
+                            f'position={{{x},{y}}}, force="player", tags={lua_tags}}} '
+                            f'local _, e = g.revive{{raise_revive=true}} return e.unit_number')
         unit = int(await self.lua(code))
         self._where[unit] = (name, x + 0.5, y + 0.5)
         return unit
