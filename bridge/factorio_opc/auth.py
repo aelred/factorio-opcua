@@ -7,11 +7,13 @@ import hashlib
 import hmac
 import os
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from asyncua import ua
 from asyncua.crypto.permission_rules import USER_TYPES, PermissionRuleset, User, UserRole
 
-from .config import Config
+if TYPE_CHECKING:
+    from .config import Config
 
 # scrypt cost parameters (about 16 MB and 50 ms per hash on a laptop).
 SCRYPT_N, SCRYPT_R, SCRYPT_P = 2**14, 8, 1

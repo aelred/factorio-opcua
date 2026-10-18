@@ -54,8 +54,8 @@ copy whose name is already taken gets `-2`, `-3`, ... appended.
 ### `/opc_browse`
 ```json
 {"ok":true,"tick":7170,"model_version":2,"tags":[
-  {"name":"reader-1","kind":"reader","unit":17,"surface":"nauvis","position":{"x":12.5,"y":10.5}},
-  {"name":"writer-1","kind":"writer","unit":16,"surface":"nauvis","position":{"x":10.5,"y":10.5}}]}
+  {"name":"reader-1","kind":"reader","unit":17},
+  {"name":"writer-1","kind":"writer","unit":16}]}
 ```
 Tags are sorted by name.
 

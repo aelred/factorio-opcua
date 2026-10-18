@@ -127,7 +127,7 @@ async def rcon():
     client = RconClient(host, port, password, timeout=10)
     try:
         await client.connect()
-    except (OSError, asyncio.TimeoutError) as exc:
+    except (TimeoutError, OSError) as exc:
         unavailable(f"Factorio RCON not reachable at {host}:{port}: {exc}")
     yield client
     await client.close()

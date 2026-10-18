@@ -6,6 +6,7 @@ from asyncua import Client, ua
 
 from factorio_opc.config import Config
 from factorio_opc.server import Bridge
+
 from helpers import eventually, free_port
 
 

@@ -37,6 +37,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
 
+from .auth import hash_password
+
 MIN_POLL_HZ = 1.0
 # A poll's RCON round trip takes about one game tick (16.7 ms); at 30 Hz some
 # polls already start late.
@@ -144,14 +146,12 @@ def read_password_file(path: str | Path, base: Path | None = None) -> str:
     if base is not None and not path.is_absolute():
         path = base / path
     try:
-        return path.read_text().strip()
+        return path.read_text(encoding="utf-8").strip()
     except OSError as exc:
         raise ConfigError(f"cannot read RCON password file {path}: {exc}") from None
 
 
 def _parse_users(raw: list) -> list[UserConfig]:
-    from .auth import hash_password  # imported lazily: only needed for plain-text passwords
-
     users, seen = [], set()
     for i, entry in enumerate(raw):
         if not isinstance(entry, dict):
@@ -191,7 +191,7 @@ def load_config(path: str | Path | None = None, env: dict[str, str] | None = Non
     if path is not None:
         path = Path(path)
         try:
-            data = tomllib.loads(path.read_text())
+            data = tomllib.loads(path.read_text(encoding="utf-8"))
         except (OSError, tomllib.TOMLDecodeError) as exc:
             raise ConfigError(f"cannot load config {path}: {exc}") from None
         base = path.parent

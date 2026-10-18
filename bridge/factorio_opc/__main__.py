@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import getpass
 import logging
 import signal
 import sys
 
 from . import __version__
+from .auth import hash_password
 from .config import LOG_FORMATS, ConfigError, load_config, read_password_file
 from .logs import setup_logging
 from .server import Bridge
@@ -35,18 +37,14 @@ async def run(bridge: Bridge) -> None:
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
-        try:
+        with contextlib.suppress(NotImplementedError):  # Windows: Ctrl-C still raises KeyboardInterrupt
             loop.add_signal_handler(sig, stop.set)
-        except NotImplementedError:  # Windows: Ctrl-C still raises KeyboardInterrupt
-            pass
     async with bridge:
         await stop.wait()
         logging.getLogger("factorio_opc").info("shutting down")
 
 
 def hash_password_command() -> int:
-    from .auth import hash_password
-
     try:
         password = getpass.getpass("Password: ")
         if sys.stdin.isatty() and getpass.getpass("Repeat: ") != password:

@@ -19,8 +19,6 @@ async def test_built_entities_get_default_names_and_appear_in_browse(factorio):
     by_unit = {t["unit"]: t for t in browse["tags"]}
     assert by_unit[reader]["kind"] == "reader" and by_unit[reader]["name"].startswith("reader-")
     assert by_unit[writer]["kind"] == "writer" and by_unit[writer]["name"].startswith("writer-")
-    assert by_unit[reader]["surface"] == "nauvis"
-    assert by_unit[reader]["position"] == {"x": 10.5, "y": 10.5}
     assert browse["model_version"] >= before + 2
     assert [t["name"] for t in browse["tags"]] == sorted(t["name"] for t in browse["tags"])
 

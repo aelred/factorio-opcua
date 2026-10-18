@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import contextvars
 import ipaddress
 import json
@@ -11,9 +12,10 @@ import socket
 import time
 import uuid
 import warnings
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Callable
+from typing import Self
 from urllib.parse import urlparse
 
 from asyncua import Server, ua
@@ -24,7 +26,6 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.x509.oid import ExtendedKeyUsageOID
 
 from .auth import Ruleset, UserManager
-
 from .config import Config
 from .game import GameApi, GameError, RconGame
 from .model import NAMESPACE_URI, AddressSpace, now
@@ -99,7 +100,7 @@ def _needs_new_certificate(cert_file: Path, dns: list[str], ips: list[str]) -> b
         san = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
     except (OSError, ValueError, x509.ExtensionNotFound):
         return True
-    if cert.not_valid_after_utc - datetime.now(timezone.utc) < timedelta(days=7):
+    if cert.not_valid_after_utc - datetime.now(UTC) < timedelta(days=7):
         return True
     have_ips = {str(i) for i in san.get_values_for_type(x509.IPAddress)}
     return (APPLICATION_URI not in san.get_values_for_type(x509.UniformResourceIdentifier)
@@ -194,14 +195,12 @@ class Bridge:
     async def stop(self) -> None:
         if self._task is not None:
             self._task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._task
-            except asyncio.CancelledError:
-                pass
         await self._disconnect()
         await self.server.stop()
 
-    async def __aenter__(self) -> Bridge:
+    async def __aenter__(self) -> Self:
         await self.start()
         return self
 
@@ -214,10 +213,8 @@ class Bridge:
         game, self.game = self.game, None
         self.connected.clear()
         if game is not None:
-            try:
+            with contextlib.suppress(Exception):  # closing a broken connection may fail; nothing to do about it
                 await game.close()
-            except Exception:  # closing a broken connection may fail; nothing to do about it
-                pass
 
     async def _run_game(self) -> None:
         assert self.model is not None
@@ -314,7 +311,9 @@ class Bridge:
 
         iserver.create_session = create_tracked_session
 
-    async def _write(self, params: ua.WriteParameters, user: User = User()) -> list[ua.StatusCode]:
+    async def _write(
+        self, params: ua.WriteParameters, user: User = User()  # noqa: B008 (asyncua's signature)
+    ) -> list[ua.StatusCode]:
         """Intercepts session writes: writer signal nodes go to the game, the rest to asyncua."""
         assert self.model is not None
         results: list[ua.StatusCode | None] = [None] * len(params.NodesToWrite)
@@ -337,7 +336,7 @@ class Bridge:
 
         if passthrough:
             sub = ua.WriteParameters(NodesToWrite=[params.NodesToWrite[i] for i in passthrough])
-            for i, result in zip(passthrough, await self._original_write(sub, user=user)):
+            for i, result in zip(passthrough, await self._original_write(sub, user=user), strict=True):
                 results[i] = result
 
         for tag, items in by_tag.items():
@@ -363,7 +362,7 @@ class Bridge:
             self.metrics["WriteErrors"] += 1
             log.warning("write to %s rejected by the game: %s", tag, exc, extra={**audit, "result": "rejected"})
             raise ua.UaStatusCodeError(ua.StatusCodes.BadInvalidArgument) from exc
-        except (RconError, OSError, asyncio.TimeoutError) as exc:
+        except (TimeoutError, RconError, OSError) as exc:
             self.metrics["WriteErrors"] += 1
             log.warning("write to %s failed: %s", tag, exc, extra={**audit, "result": "failed"})
             raise ua.UaStatusCodeError(ua.StatusCodes.BadCommunicationError) from exc

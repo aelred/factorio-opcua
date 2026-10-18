@@ -1,0 +1,9 @@
+line-length = 120
+target-version = "py311"
+
+[lint]
+extend-select = ["I", "UP", "B", "SIM"]
+
+[lint.isort]
+known-first-party = ["factorio_opc"]
+known-local-folder = ["fake_game", "helpers"]

@@ -105,14 +105,11 @@ end
 function handlers.opc_browse()
   local tags = {}
   for _, entry in ipairs(registry.entries()) do
-    local e = entry.entity
-    if e.valid then
+    if entry.entity.valid then
       tags[#tags + 1] = {
         name = entry.name,
         kind = entry.kind,
         unit = entry.unit,
-        surface = e.surface.name,
-        position = { x = e.position.x, y = e.position.y },
       }
     end
   end

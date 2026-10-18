@@ -21,11 +21,9 @@ class FakeWorld:
         self.connections = 0
         self.polls: list[Poll] = []          # every poll reply, for assertions
         self.sessions: dict[str, dict] = {}  # session -> {"seq": int, "values": {"readers", "writers"}}
-        self._unit = 0
 
     def add(self, kind: str, name: str) -> None:
-        self._unit += 1
-        self.tags[name] = Tag(name=name, kind=kind, unit=self._unit, surface="nauvis", position=(0.0, 0.0))
+        self.tags[name] = Tag(name=name, kind=kind)
         if kind == "reader":
             self.readers[name] = ReaderValues()
         else:

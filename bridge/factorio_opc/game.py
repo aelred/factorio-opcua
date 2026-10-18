@@ -33,9 +33,6 @@ class Hello:
 class Tag:
     name: str
     kind: Kind
-    unit: int
-    surface: str
-    position: tuple[float, float]
 
 
 @dataclass(frozen=True)
@@ -120,13 +117,7 @@ def parse_hello(reply: dict) -> Hello:
 
 def parse_browse(reply: dict) -> list[Tag]:
     return [
-        Tag(
-            name=str(t["name"]),
-            kind=t["kind"],
-            unit=int(t["unit"]),
-            surface=str(t["surface"]),
-            position=(float(t["position"]["x"]), float(t["position"]["y"])),
-        )
+        Tag(name=str(t["name"]), kind=t["kind"])
         for t in _as_list(reply.get("tags"))
     ]
 

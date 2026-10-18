@@ -146,7 +146,7 @@ async def test_encrypted_endpoint_with_generated_certificate(make_bridge, client
     modes = {e.SecurityMode for e in endpoints}
     assert modes == {ua.MessageSecurityMode.SignAndEncrypt}
 
-    with pytest.raises(Exception):
+    with pytest.raises(Exception):  # noqa: B017 (asyncua raises different errors here)
         await connect(bridge, "alice", "alice-pw")  # no unencrypted endpoint any more
     client = await connect(bridge, "alice", "alice-pw", security=client_cert)
     try:
@@ -195,7 +195,7 @@ def test_password_hashing():
 
 def test_config_users_and_security(tmp_path):
     path = tmp_path / "bridge.toml"
-    path.write_text('''
+    path.write_text(f'''
 [opcua]
 security = ["sign_encrypt"]
 anonymous = "none"
@@ -206,8 +206,8 @@ password = "plain-pw"
 role = "write"
 [[opcua.users]]
 name = "viewer"
-password_hash = "%s"
-''' % hash_password("v"))
+password_hash = "{hash_password("v")}"
+''')
     config = load_config(path, env={"FACTORIO_RCON_PASSWORD": "x"}).validate()
     assert config.security == ["sign_encrypt"] and config.anonymous == "none"
     assert config.pki_dir == str(tmp_path / "pki")

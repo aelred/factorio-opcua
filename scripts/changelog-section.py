@@ -9,7 +9,7 @@ from pathlib import Path
 
 version = sys.argv[1]
 text = (Path(__file__).resolve().parent.parent / "CHANGELOG.md").read_text()
-match = re.search(rf"^## \[?{re.escape(version)}\]?.*?\n(.*?)(?=^## |\Z)", text, re.S | re.M)
+match = re.search(rf"^## \[?{re.escape(version)}\]?.*?\n(.*?)(?=^## |\Z)", text, re.DOTALL | re.MULTILINE)
 if not match or not match.group(1).strip():
     sys.exit(f"CHANGELOG.md has no section for {version}")
 print(match.group(1).strip())

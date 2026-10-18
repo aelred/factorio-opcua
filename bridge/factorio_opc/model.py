@@ -21,9 +21,9 @@ added or deleted nodes are reported as GeneralModelChangeEvents.
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Awaitable, Callable
+from datetime import UTC, datetime
 
 from asyncua import Server, ua
 from asyncua.common.node import Node
@@ -90,7 +90,7 @@ def describe_changes(changes: list[ua.ModelChangeStructureDataType]) -> str:
 
 
 def now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @dataclass

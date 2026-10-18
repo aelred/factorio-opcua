@@ -12,8 +12,10 @@ Factorio specifics (measured against 2.0.77):
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import itertools
 import struct
+from typing import Self
 
 SERVERDATA_AUTH = 3
 SERVERDATA_AUTH_RESPONSE = 2
@@ -120,20 +122,16 @@ class RconClient:
     async def close(self) -> None:
         if self._read_task is not None:
             self._read_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._read_task
-            except asyncio.CancelledError:
-                pass
             self._read_task = None
         if self._writer is not None:
             self._writer.close()
-            try:
+            with contextlib.suppress(ConnectionError):
                 await self._writer.wait_closed()
-            except ConnectionError:
-                pass
             self._writer = None
 
-    async def __aenter__(self) -> RconClient:
+    async def __aenter__(self) -> Self:
         await self.connect()
         return self
 

@@ -1,3 +1,4 @@
 # Everything needed to run all tests: pip install -r requirements-dev.txt
 -e ./bridge[dev]
+ruff==0.16.8  # linter; pinned so new default rules don't break CI
 lupa>=2.0  # runs the mod's pure Lua modules under Lua 5.2 in mod/tests

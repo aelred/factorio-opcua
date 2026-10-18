@@ -116,6 +116,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 scripts/dev-server.sh up          # Factorio 2.0.77 headless + opc-io; RCON on 127.0.0.1:27015
 .venv/bin/pytest                  # unit + integration tests (integration is skipped without the server)
 .venv/bin/pytest -m "not integration"
+.venv/bin/ruff check .            # lint (rules in ruff.toml)
 .venv/bin/factorio-opc --rcon-password-file .dev/factorio/config/rconpw   # bridge on the dev server
 scripts/package-mod.sh            # dist/opc-io_<version>.zip
 scripts/dev-server.sh down

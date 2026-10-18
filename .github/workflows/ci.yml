@@ -23,6 +23,8 @@ jobs:
         run: python scripts/check-version.py
       - name: bridge/LICENSE is a copy of LICENSE
         run: cmp LICENSE bridge/LICENSE
+      - name: Lint
+        run: ruff check .
       - run: pytest -m "not integration"
 
   integration:

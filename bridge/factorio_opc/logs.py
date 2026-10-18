@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # LogRecord attributes that aren't caller-supplied `extra` fields.
 _STANDARD = set(vars(logging.LogRecord("", 0, "", 0, "", None, None))) | {"message", "asctime", "taskName"}
@@ -15,7 +15,7 @@ class JsonFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         entry = {
-            "time": datetime.fromtimestamp(record.created, timezone.utc).isoformat(timespec="milliseconds"),
+            "time": datetime.fromtimestamp(record.created, UTC).isoformat(timespec="milliseconds"),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),

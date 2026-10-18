@@ -1,6 +1,6 @@
 import pytest
 
-from factorio_opc.game import GameError, parse_browse, parse_hello, parse_poll, parse_reply
+from factorio_opc.game import GameError, Tag, parse_browse, parse_hello, parse_poll, parse_reply
 
 
 def test_parse_reply_errors():
@@ -22,8 +22,8 @@ def test_parse_hello():
 def test_parse_browse_accepts_empty_object_for_empty_list():
     assert parse_browse(parse_reply('{"tick":1,"model_version":0,"tags":{},"ok":true}')) == []
     tags = parse_browse(parse_reply(
-        '{"ok":true,"tags":[{"name":"r","kind":"reader","unit":7,"surface":"nauvis","position":{"x":1.5,"y":2.5}}]}'))
-    assert tags[0].name == "r" and tags[0].position == (1.5, 2.5)
+        '{"ok":true,"tags":[{"name":"r","kind":"reader","unit":7}]}'))
+    assert tags == [Tag(name="r", kind="reader")]
 
 
 POLL_HEADER = '"seq":1,"full":true,"tick":9,"tick_paused":false,"speed":1,"model_version":2'
