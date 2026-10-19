@@ -134,11 +134,14 @@ end
 -- player did to the combinator:
 --   writer: enabled, exactly one section with no logistic group (a group would
 --           share values with other combinators). Existing values are kept.
---   reader: disabled and no sections, so it never adds to the networks it reads.
+--   reader: no sections, so it never adds to the networks it reads. It stays
+--           enabled: a disabled one would show as "Disabled" in game.
 --   both:   not operable, so the game never opens its own combinator window;
---           the mod opens its panel instead (lib/gui.lua).
+--           the mod opens its panel instead (lib/gui.lua). A status line
+--           says what it does, in place of the combinator's own.
 function registry.normalize(entity, kind)
   entity.operable = false
+  entity.custom_status = { diode = defines.entity_status_diode.green, label = { "opcua-io.status-" .. kind } }
   local cb = control(entity)
   local keep = {}
   if kind == "writer" then
@@ -150,14 +153,12 @@ function registry.normalize(entity, kind)
   if kind == "writer" then
     cb.add_section()
     cb.get_section(1).filters = signals.to_filters(keep)
-    cb.enabled = true
     local entry = state().by_unit[entity.unit_number]
     if entry then
       entry.values = keep
     end
-  else
-    cb.enabled = false
   end
+  cb.enabled = true
 end
 
 -- Registers a newly built entity. `wanted` is an optional preferred name

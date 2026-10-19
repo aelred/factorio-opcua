@@ -2,8 +2,8 @@
 -- Both reuse the base game's constant-combinator prototype and graphics
 -- (referenced from __base__, not copied).
 --   Writer: its output signals are set by the OPC bridge.
---   Reader: kept disabled and empty by control.lua, so it emits nothing and
---           only reads the red/green networks it is wired to.
+--   Reader: kept empty (no signal sections) by control.lua, so it emits
+--           nothing and only reads the red/green networks it is wired to.
 
 local base_entity = data.raw["constant-combinator"]["constant-combinator"]
 local base_item = data.raw["item"]["constant-combinator"]

@@ -114,7 +114,7 @@ Reply: `{"ok":true,"tick":...,"tag":"writer-1","signals":{...full new output...}
   no logistic group. The mod enforces this after builds, pastes and
   blueprints, because a logistic group would share values between
   combinators.
-- **OPC Reader**: a constant combinator kept disabled and empty, so it
-  never adds to the networks it reads.
+- **OPC Reader**: a constant combinator kept empty (no signal sections),
+  so it never adds to the networks it reads.
 - Both replace the combinator panel with an OPC panel that edits the tag
   name and shows current signals. Players can't edit writer values by hand.
