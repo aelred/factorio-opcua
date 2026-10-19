@@ -1,11 +1,14 @@
 name: Release
 
-# Push a tag like v0.6.0 to build the mod zip and the bridge packages and
-# publish a GitHub release. Before tagging:
+# Push a tag like v0.6.0 to build the mod zip and the bridge packages, publish
+# a GitHub release, and upload the mod to the Factorio mod portal
+# (mods.factorio.com/mod/opcua-io). Before tagging:
 # - set the version in mod/opcua-io/info.json, bridge/pyproject.toml and
 #   bridge/factorio_opcua/__init__.py (scripts/check-version.py checks them);
 # - add a "Version: X.Y.Z" section to mod/opcua-io/changelog.txt (Factorio's
 #   changelog format), which also becomes the release notes.
+# The portal upload uses the FACTORIO_API_KEY secret (a factorio.com API key
+# with the "upload" permission). The portal refuses a version it already has.
 on:
   push:
     tags: ["v*"]
@@ -33,3 +36,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" --title "factorio-opcua $GITHUB_REF_NAME" --notes-file notes.md dist/*
+      - name: Upload the mod to the Factorio mod portal
+        env:
+          FACTORIO_API_KEY: ${{ secrets.FACTORIO_API_KEY }}
+        run: |
+          # Two steps: ask for an upload URL, then send the zip to it. Errors print the portal's reply.
+          response=$(curl --fail-with-body -sS -H "Authorization: Bearer $FACTORIO_API_KEY" \
+            -F mod=opcua-io https://mods.factorio.com/api/v2/mods/releases/init_upload) \
+            || { echo "$response"; exit 1; }
+          upload_url=$(python -c 'import json, sys; print(json.loads(sys.argv[1])["upload_url"])' "$response") \
+            || { echo "$response"; exit 1; }
+          curl --fail-with-body -sS -F "file=@dist/opcua-io_${GITHUB_REF_NAME#v}.zip" "$upload_url"
