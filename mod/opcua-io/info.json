@@ -1,9 +1,14 @@
 {
   "name": "opcua-io",
   "version": "0.6.0",
-  "title": "OPC I/O",
+  "title": "OPC UA I/O",
   "author": "aelred",
+  "homepage": "https://github.com/aelred/factorio-opcua",
   "factorio_version": "2.0",
-  "description": "Exposes circuit-network signals to OPC UA clients through the factorio-opcua bridge (RCON).",
-  "dependencies": ["base >= 2.0", "? quality", "? space-age"]
+  "description": "OPC Reader and Writer combinators that connect circuit networks to OPC UA clients such as SCADA systems and PLCs. Needs the factorio-opcua bridge and a server with RCON; see the homepage.",
+  "dependencies": [
+    "base >= 2.0",
+    "? quality",
+    "? space-age"
+  ]
 }

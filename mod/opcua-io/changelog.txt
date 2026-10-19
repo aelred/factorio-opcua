@@ -1,0 +1,27 @@
+---------------------------------------------------------------------------------------------------
+Version: 0.6.0
+  Info:
+    - First release. The mod (opcua-io) and the bridge (factorio-opcua) share one version number.
+  Features:
+    - OPC Writer and OPC Reader combinators, unlocked by Circuit network. Writers output signals set by
+      OPC UA clients; readers publish the red and green networks they are wired to.
+    - Every reader and writer has a tag name, its name in OPC UA. It is set in its panel, kept in
+      blueprints (a taken name gets a -2 suffix) and in ghosts left when it is destroyed, and can be
+      changed with remote.call("opcua-io", "rename", ...).
+    - Open panels show live values.
+    - /opc_demo builds a demo surface with a clock, lamps and a production line with switches, counters
+      and status signals, all made of ordinary circuits.
+    - Quality signals are supported with Space Age.
+  Scripting:
+    - RCON commands for the bridge, protocol 1: /opc_hello, /opc_browse, /opc_poll (only changes after
+      a session's first poll) and /opc_write. Errors come back as JSON and never stop the server.
+  Bridge:
+    - An OPC UA server with readers (Red, Green, Total), writers (writable signals, plus SetSignals and
+      ClearAll) and Status/ metrics.
+    - Change-only polling at 1-30 Hz, with reconnect and resync. Stale values are marked Uncertain.
+    - GeneralModelChangeEvents for tag changes; removed tags report BadNodeIdUnknown.
+    - none, sign and sign_encrypt endpoints with a self-signed certificate, users with read or write
+      roles, and a refusal to expose unencrypted anonymous access or plain-text passwords to the network.
+    - A write audit log, and JSON logs.
+    - factorio-opcua hash-password command.
+    - A Docker image, and deploy/compose.yml running Factorio with the bridge.

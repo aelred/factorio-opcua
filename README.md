@@ -117,7 +117,7 @@ shows how to call methods from it and from the command line.
 | [docs/security.md](docs/security.md) | Endpoints, certificates, users and roles, audit log |
 | [docs/docker.md](docs/docker.md) | Running Factorio and the bridge with Docker |
 | [docs/protocol.md](docs/protocol.md) | The mod's RCON commands |
-| [CHANGELOG.md](CHANGELOG.md) | Changes per version |
+| [mod/opcua-io/changelog.txt](mod/opcua-io/changelog.txt) | Changes per version, in Factorio's format (shown in game) |
 
 ## Development
 

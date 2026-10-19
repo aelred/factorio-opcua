@@ -4,7 +4,8 @@ name: Release
 # publish a GitHub release. Before tagging:
 # - set the version in mod/opcua-io/info.json, bridge/pyproject.toml and
 #   bridge/factorio_opcua/__init__.py (scripts/check-version.py checks them);
-# - add a "## X.Y.Z" section to CHANGELOG.md, which becomes the release notes.
+# - add a "Version: X.Y.Z" section to mod/opcua-io/changelog.txt (Factorio's
+#   changelog format), which also becomes the release notes.
 on:
   push:
     tags: ["v*"]
@@ -26,7 +27,7 @@ jobs:
       - run: pytest -m "not integration"
       - run: scripts/package-mod.sh
       - run: python -m build bridge --outdir dist
-      - name: Release notes from CHANGELOG.md
+      - name: Release notes from changelog.txt
         run: python scripts/changelog-section.py "${GITHUB_REF_NAME#v}" > notes.md
       - name: Publish release
         env:
