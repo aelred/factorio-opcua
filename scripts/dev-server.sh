@@ -18,9 +18,9 @@ if [[ -n "${FACTORIO_ADMINS:-}" ]]; then
 fi
 
 # Server settings: LAN-only, no account check.
-cp docker/server-settings.dev.json "$data/config/server-settings.json"
+cp scripts/dev-server/server-settings.json "$data/config/server-settings.json"
 
-compose=(docker compose -f docker/compose.yml)
+compose=(docker compose -f scripts/dev-server/compose.yml)
 case "${1:-up}" in
   # --wait returns once the healthcheck passes: RCON is up and opcua-io answers.
   up)   "${compose[@]}" up -d --force-recreate --wait --wait-timeout 300 ;;

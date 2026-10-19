@@ -41,7 +41,7 @@ jobs:
       - run: pytest mod/tests/integration   # fails rather than skips without a server, because CI=true
       - name: Server log
         if: failure()
-        run: docker compose -f docker/compose.yml logs
+        run: docker compose -f scripts/dev-server/compose.yml logs
 
   package:
     name: Build packages
