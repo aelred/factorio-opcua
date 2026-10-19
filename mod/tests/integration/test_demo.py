@@ -1,12 +1,11 @@
-"""The /opc_demo surface: clock, lamps, echo and the production line with its status codes."""
+"""The /opc_demo surface: clock, lamps, echo and the production line with its status signals."""
 
 import pytest
 
 from helpers import eventually
 
-TAGS = {"demo_clock", "demo_lamps", "demo_echo", "line_switch", "line_input_count", "line_output_count",
-        "line_status"}
-RUNNING, STOPPED, NO_POWER, NO_INPUT, OUTPUT_BLOCKED = 1, 2, 3, 4, 5
+TAGS = {"demo_clock", "demo_lamps", "demo_echo", "line_input_count", "line_output_count", "line_status"}
+RUNNING = {"R", "P", "W"}  # line on, power on, machine working
 
 
 def at(name, x, y):
@@ -14,7 +13,8 @@ def at(name, x, y):
 
 
 SUPPLY, LINE, COLLECTION = (at("constant-combinator", x, -0.5) for x in (-11.5, -3.5, 4.5))
-POWER = at("power-switch", -10, 9)
+POWER = at("constant-combinator", -12.5, 6.5)
+POWER_SWITCH = at("power-switch", -10, 9)
 
 
 @pytest.fixture
@@ -36,11 +36,17 @@ async def reader(factorio, name):
     return (await factorio.values())["readers"][name]["red"]
 
 
-async def wait_for_status(factorio, code):
+async def wait_for_status(factorio, expected):
+    """Waits until line_status shows exactly these signals (virtual signal-X, value 1)."""
     async def check():
-        assert (await reader(factorio, "line_status")).get("virtual/signal-E") == code
+        status = await reader(factorio, "line_status")
+        assert {key.removeprefix("virtual/signal-") for key, value in status.items() if value} == expected
 
     await eventually(check, timeout=30)
+
+
+def toggle(combinator, on):
+    return f"{combinator}.get_control_behavior().enabled = {'true' if on else 'false'}"
 
 
 async def test_demo_has_tags_clock_lamps_and_echo(demo):
@@ -69,7 +75,7 @@ async def test_demo_has_tags_clock_lamps_and_echo(demo):
     assert await reader(demo, "demo_echo") == {"virtual/signal-1": 1, "virtual/signal-3": 1, "virtual/signal-4": 1}
 
 
-async def test_line_counts_switch_and_problem_codes(demo):
+async def test_line_counts_and_status_signals(demo):
     await wait_for_status(demo, RUNNING)
 
     async def counting():
@@ -78,29 +84,23 @@ async def test_line_counts_switch_and_problem_codes(demo):
 
     await eventually(counting, timeout=30)
 
-    # The line switch, from OPC and then in game.
-    await demo.command("opc_write", {"tag": "line_switch", "signals": {"virtual/signal-R": 0}, "mode": "replace"})
-    await wait_for_status(demo, STOPPED)
-    assert await demo.lua(f"return {LINE}.get_control_behavior().enabled") == "false"
-    await demo.lua(f"{LINE}.get_control_behavior().enabled = true")
-
-    async def switched_on_in_game():
-        assert (await demo.values())["writers"]["line_switch"] == {"virtual/signal-R": 1}
-
-    await eventually(switched_on_in_game)
+    await demo.lua(toggle(LINE, False))
+    await wait_for_status(demo, {"P"})
+    await demo.lua(toggle(LINE, True))
     await wait_for_status(demo, RUNNING)
 
-    await demo.lua(f"{POWER}.power_switch_state = false")
-    await wait_for_status(demo, NO_POWER)
-    await demo.lua(f"{POWER}.power_switch_state = true")
+    await demo.lua(toggle(POWER, False))
+    await wait_for_status(demo, {"R"})
+    assert await demo.lua(f"return {POWER_SWITCH}.power_switch_state") == "false"
+    await demo.lua(toggle(POWER, True))
     await wait_for_status(demo, RUNNING)
 
-    await demo.lua(f"{SUPPLY}.get_control_behavior().enabled = false")
-    await wait_for_status(demo, NO_INPUT)
-    await demo.lua(f"{SUPPLY}.get_control_behavior().enabled = true")
+    await demo.lua(toggle(SUPPLY, False))
+    await wait_for_status(demo, {"R", "P", "I"})  # input belt empty at the machine
+    await demo.lua(toggle(SUPPLY, True))
     await wait_for_status(demo, RUNNING)
 
-    await demo.lua(f"{COLLECTION}.get_control_behavior().enabled = false")
-    await wait_for_status(demo, OUTPUT_BLOCKED)
-    await demo.lua(f"{COLLECTION}.get_control_behavior().enabled = true")
+    await demo.lua(toggle(COLLECTION, False))
+    await wait_for_status(demo, {"R", "P", "B"})  # gears backed up at the machine
+    await demo.lua(toggle(COLLECTION, True))
     await wait_for_status(demo, RUNNING)

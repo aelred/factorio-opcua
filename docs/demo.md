@@ -37,38 +37,44 @@ Tags are listed with the OPC UA node to use (see
 
 **Production line** (bottom): an infinite chest of iron plates feeds an
 input belt, an assembling machine makes gears, and an output belt carries
-them to a chest that empties itself.
+them to a chest that empties itself. It's all ordinary circuits: once the
+demo is built, no script runs.
 
 | Tag | Node | What it does |
 |---|---|---|
-| `line_switch` | `Writers/line_switch/Signals/virtual/signal-R` | `1` runs the line, `0` stops it. The same as the LINE switch in game: change either and the other follows. |
 | `line_input_count` | `Readers/line_input_count/Red/item/iron-plate` | Plates put on the input belt so far |
 | `line_output_count` | `Readers/line_output_count/Red/item/iron-gear-wheel` | Gears taken off the output belt so far |
-| `line_status` | `Readers/line_status/Red/virtual/signal-E` | The line's status code, below |
+| `line_status` | `Readers/line_status/Red/virtual/signal-…` | Status signals, below |
 
-The status code is also shown in game, under the status combinator.
+`line_status` reads the line's control network. Each status signal is `1`
+while it applies and `0` otherwise. (Its OPC node appears the first time it
+is `1`; B, for example, only once the output has been blocked.)
 
-| Code | Status | Cause |
+| Signal | Means | Comes from |
 |---|---|---|
-| 1 | Running | The machine has made something in the last 3 seconds |
-| 2 | Stopped | The line switch is off |
-| 3 | No power | The POWER switch is off |
-| 4 | No input | The machine is out of plates, for example with SUPPLY off |
-| 5 | Output blocked | The machine can't put out more gears, for example with COLLECTION off |
-| 9 | Other | Anything else |
+| `virtual/signal-R` | The line is switched on | The LINE combinator |
+| `virtual/signal-P` | Power is on | The POWER combinator, which also opens and closes the power switch |
+| `virtual/signal-W` | The machine is working | The assembling machine (its "read working state" setting) |
+| `virtual/signal-I` | No input: no plates on the belt at the machine | A decider combinator reading that belt |
+| `virtual/signal-B` | Output blocked: gears backed up at the machine | A decider combinator reading that belt |
+
+When everything runs, R, P and W are `1`. A client can work out the state
+from them, as a PLC or SCADA system would: R = 0 means stopped, P = 0 no
+power, I = 1 no input, B = 1 output blocked. Without power the belt
+sensors stop updating, so check P first.
 
 ## Things to try in game
 
-Each switch is labelled. Open a constant combinator and use its on/off
-switch; click the power switch to toggle it.
+Each switch is a labelled constant combinator: open it and use its on/off
+switch.
 
-- **LINE:** stops and resumes the line. `line_switch` follows, and
-  `line_status` becomes 2.
-- **POWER:** cuts the line's power. `line_status` becomes 3 at once.
-- **SUPPLY:** stops plates coming in. Once the input belt runs empty,
-  `line_status` becomes 4.
-- **COLLECTION:** stops gears leaving. Once the output belt is full,
-  `line_status` becomes 5.
+- **LINE:** stops and resumes the line. R and W go to 0.
+- **POWER:** opens the power switch, cutting the line's power. P and W go to
+  0 at once.
+- **SUPPLY:** stops plates coming in. Once the input belt has run empty at
+  the machine, which takes a little while, I becomes 1 and W 0.
+- **COLLECTION:** stops gears leaving. Once gears have backed up to the
+  machine, which takes a little longer, B becomes 1 and W 0.
 
 You can also pick up a belt or an inserter to cause a problem. To start
 again from scratch, run `/opc_demo remove` and then `/opc_demo`.

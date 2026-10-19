@@ -88,8 +88,8 @@ In game, build an OPC Writer or Reader (unlocked by Circuit network), open
 it to name its tag, and wire it into your circuits.
 
 **To try it out first,** type `/opc_demo` in chat. It builds a demo on a
-separate surface, with a clock, lamps and a small production line whose
-switch and status codes you can read and write over OPC UA. See
+separate surface, with a clock, lamps you can switch over OPC UA, and a
+small production line with counters and status signals. See
 [docs/demo.md](docs/demo.md).
 
 **Security:** by default the bridge accepts connections from this machine

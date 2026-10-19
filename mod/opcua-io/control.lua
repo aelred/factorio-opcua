@@ -101,13 +101,8 @@ script.on_event(defines.events.on_gui_closed, safe(gui.on_closed))
 script.on_event(defines.events.on_gui_click, safe(gui.on_click))
 script.on_event(defines.events.on_gui_confirmed, safe(gui.on_confirmed))
 
--- Six times a second: open panels show live values, and the demo (if built)
--- updates its switch and status.
-local refresh_panels, update_demo = safe(gui.refresh), safe(demo.update)
-script.on_nth_tick(10, function(event)
-  refresh_panels(event)
-  update_demo(event)
-end)
+-- Open panels show live values, refreshed six times a second.
+script.on_nth_tick(10, safe(gui.refresh))
 
 script.on_init(function()
   registry.init()
@@ -148,10 +143,6 @@ local function demo_command(cmd)
     if not demo.exists() then
       if not admin then
         say(cmd, "[opcua-io] there is no demo yet; an admin can build it with /opc_demo")
-        return
-      end
-      if game.surfaces[demo.SURFACE] then
-        say(cmd, "[opcua-io] a surface named " .. demo.SURFACE .. " already exists; delete it with /opc_demo remove")
         return
       end
       local names = demo.build()

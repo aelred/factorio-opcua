@@ -17,7 +17,8 @@ First release.
   as JSON and never stop the server.
 - **Quality:** quality signals are supported with Space Age.
 - **Demo:** `/opc_demo` builds a demo surface with a clock, lamps and a
-  production line with a switch, counters and status codes.
+  production line with switches, counters and status signals, all made of
+  ordinary circuits.
 
 **Bridge (factorio-opcua):**
 - **Address space:** an OPC UA server with readers (Red/Green/Total), writers
