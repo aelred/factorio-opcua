@@ -8,7 +8,7 @@ name: Release
 # - add a "Version: X.Y.Z" section to mod/opcua-io/changelog.txt (Factorio's
 #   changelog format), which also becomes the release notes.
 # The portal upload uses the FACTORIO_API_KEY secret (a factorio.com API key
-# with the "upload" permission). The portal refuses a version it already has.
+# with the "upload" permission). A version already on the portal is skipped.
 on:
   push:
     tags: ["v*"]
@@ -40,10 +40,17 @@ jobs:
         env:
           FACTORIO_API_KEY: ${{ secrets.FACTORIO_API_KEY }}
         run: |
+          version="${GITHUB_REF_NAME#v}"
+          released=$(curl -fsS https://mods.factorio.com/api/mods/opcua-io \
+            | python -c 'import json, sys; print(*[r["version"] for r in json.load(sys.stdin)["releases"]])')
+          if [[ " $released " == *" $version "* ]]; then
+            echo "opcua-io $version is already on the mod portal; not uploading it again"
+            exit 0
+          fi
           # Two steps: ask for an upload URL, then send the zip to it. Errors print the portal's reply.
           response=$(curl --fail-with-body -sS -H "Authorization: Bearer $FACTORIO_API_KEY" \
             -F mod=opcua-io https://mods.factorio.com/api/v2/mods/releases/init_upload) \
             || { echo "$response"; exit 1; }
-          upload_url=$(python -c 'import json, sys; print(json.loads(sys.argv[1])["upload_url"])' "$response") \
-            || { echo "$response"; exit 1; }
-          curl --fail-with-body -sS -F "file=@dist/opcua-io_${GITHUB_REF_NAME#v}.zip" "$upload_url"
+          upload_url=$(python -c 'import json, sys; print(json.loads(sys.argv[1])["upload_url"])' \
+            "$response") || { echo "$response"; exit 1; }
+          curl --fail-with-body -sS -F "file=@dist/opcua-io_$version.zip" "$upload_url"
