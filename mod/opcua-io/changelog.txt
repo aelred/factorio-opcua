@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.6.1
+Date: 2026-10-19
+  Info:
+    - A release to check the release process, which now uploads new versions to the mod portal. No
+      changes to the mod or the bridge.
+---------------------------------------------------------------------------------------------------
 Version: 0.6.0
   Info:
     - First release. The mod (opcua-io) and the bridge (factorio-opcua) share one version number.

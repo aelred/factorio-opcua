@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "factorio-opcua"
-version = "0.6.0"
+version = "0.6.1"
 description = "OPC UA server bridging Factorio 2.0 circuit networks over RCON"
 readme = "README.md"
 license = "MIT"
