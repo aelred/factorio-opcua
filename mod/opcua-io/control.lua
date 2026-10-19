@@ -101,18 +101,17 @@ script.on_event(defines.events.on_gui_closed, safe(gui.on_closed))
 script.on_event(defines.events.on_gui_click, safe(gui.on_click))
 script.on_event(defines.events.on_gui_confirmed, safe(gui.on_confirmed))
 
--- The demo's update only runs while the demo exists. on_load must register
--- exactly what was registered before saving, or multiplayer desyncs.
-local demo_update = safe(demo.update)
-local function register_demo_update()
-  script.on_nth_tick(demo.UPDATE_TICKS, demo.exists() and demo_update or nil)
-end
+-- Six times a second: open panels show live values, and the demo (if built)
+-- updates its switch and status.
+local refresh_panels, update_demo = safe(gui.refresh), safe(demo.update)
+script.on_nth_tick(10, function(event)
+  refresh_panels(event)
+  update_demo(event)
+end)
 
 script.on_init(function()
   registry.init()
 end)
-
-script.on_load(register_demo_update)
 
 script.on_configuration_changed(function()
   registry.init()
@@ -171,7 +170,6 @@ end
 commands.add_command("opc_demo", "factorio-opcua: build and visit the demo surface; /opc_demo leave|remove",
   function(cmd)
     local ok, err = pcall(demo_command, cmd)
-    register_demo_update()
     if not ok then
       log("[opcua-io] /opc_demo failed: " .. tostring(err))
       say(cmd, "[opcua-io] /opc_demo failed: " .. tostring(err))

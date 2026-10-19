@@ -1,6 +1,7 @@
 -- Small custom panel shown instead of the combinator GUI for OPC entities.
--- It lets the player set the tag name and shows the current signals.
--- Writers can't be edited by hand: their values belong to OPC clients.
+-- It lets the player set the tag name and shows the current signals, kept up
+-- to date by gui.refresh. Writers can't be edited by hand: their values belong
+-- to OPC clients.
 
 local registry = require("lib.registry")
 local signals = require("lib.signals")
@@ -21,11 +22,23 @@ local function signal_text(map)
   return table.concat(lines, "\n")
 end
 
-local function network_section(parent, entity, wire, caption)
-  parent.add({ type = "label", caption = { caption }, style = "caption_label" })
+local function network_text(entity, wire)
   local network = entity.get_circuit_network(wire)
-  local text = network and signal_text(signals.from_network(network.signals)) or { "opcua-io.not-connected" }
-  parent.add({ type = "label", caption = text }).style.single_line = false
+  return network and signal_text(signals.from_network(network.signals)) or { "opcua-io.not-connected" }
+end
+
+local function fill(frame, entry)
+  if entry.kind == "writer" then
+    frame["opcua_io_written"].caption = signal_text(registry.read_writer(entry.entity))
+  else
+    frame["opcua_io_red"].caption = network_text(entry.entity, defines.wire_connector_id.circuit_red)
+    frame["opcua_io_green"].caption = network_text(entry.entity, defines.wire_connector_id.circuit_green)
+  end
+end
+
+local function signal_section(frame, name, caption)
+  frame.add({ type = "label", caption = { caption }, style = "caption_label" })
+  frame.add({ type = "label", name = name, caption = "" }).style.single_line = false
 end
 
 function gui.close(player)
@@ -55,14 +68,29 @@ function gui.open(player, entry)
 
   frame.add({ type = "line" })
   if entry.kind == "writer" then
-    frame.add({ type = "label", caption = { "opcua-io.signals-written" }, style = "caption_label" })
-    frame.add({ type = "label", caption = signal_text(registry.read_writer(entry.entity)) }).style.single_line = false
+    signal_section(frame, "opcua_io_written", "opcua-io.signals-written")
   else
-    network_section(frame, entry.entity, defines.wire_connector_id.circuit_red, "opcua-io.signals-red")
-    network_section(frame, entry.entity, defines.wire_connector_id.circuit_green, "opcua-io.signals-green")
+    signal_section(frame, "opcua_io_red", "opcua-io.signals-red")
+    signal_section(frame, "opcua_io_green", "opcua-io.signals-green")
   end
+  fill(frame, entry)
 
   player.opened = frame
+end
+
+-- Updates the signals in every open panel, closing panels whose entity is gone.
+function gui.refresh()
+  for _, player in pairs(game.connected_players) do
+    local frame = player.gui.screen[FRAME]
+    if frame then
+      local entry = registry.get_by_unit(frame.tags.unit)
+      if entry and entry.entity.valid then
+        fill(frame, entry)
+      else
+        frame.destroy()
+      end
+    end
+  end
 end
 
 local function apply(player, element)

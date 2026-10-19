@@ -17,7 +17,6 @@ local registry = require("lib.registry")
 local demo = {}
 
 demo.SURFACE = "opcua-demo"
-demo.UPDATE_TICKS = 10
 
 local RUN = "virtual/signal-R"
 local STATUS_SIGNAL = { type = "virtual", name = "signal-E", quality = "normal" }
