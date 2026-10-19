@@ -16,6 +16,8 @@ First release.
   returns only changes after a session's first poll, and `/opc_write`. Errors come back
   as JSON and never stop the server.
 - **Quality:** quality signals are supported with Space Age.
+- **Demo:** `/opc_demo` builds a demo surface with a clock, lamps and a
+  production line with a switch, counters and status codes.
 
 **Bridge (factorio-opcua):**
 - **Address space:** an OPC UA server with readers (Red/Green/Total), writers

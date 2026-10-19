@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Start (or restart) the local Factorio dev server with the current mod sources.
-# Usage: [FACTORIO_ADMINS=you] [DLC_SPACE_AGE=true] scripts/dev-server.sh [up|down|logs]  (default: up)
+# Usage: [FACTORIO_ADMINS=you] [DLC_SPACE_AGE=true] scripts/dev-server.sh [up|down|logs|demo]  (default: up)
 # The RCON password is written to .dev/factorio/config/rconpw on first start.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -26,5 +26,6 @@ case "${1:-up}" in
   up)   "${compose[@]}" up -d --force-recreate --wait --wait-timeout 300 ;;
   down) "${compose[@]}" down ;;
   logs) "${compose[@]}" logs -f ;;
-  *)    echo "usage: $0 [up|down|logs]" >&2; exit 2 ;;
+  demo) "${compose[@]}" exec factorio rcon /opc_demo ;;  # docs/demo.md
+  *)    echo "usage: $0 [up|down|logs|demo]" >&2; exit 2 ;;
 esac

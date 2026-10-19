@@ -86,6 +86,11 @@ Connect your OPC UA client to `opc.tcp://127.0.0.1:4840/factorio-opcua/`.
 In game, build an OPC Writer or Reader (unlocked by Circuit network), open
 it to name its tag, and wire it into your circuits.
 
+**To try it out first,** type `/opc_demo` in chat. It builds a demo on a
+separate surface, with a clock, lamps and a small production line whose
+switch and status codes you can read and write over OPC UA. See
+[docs/demo.md](docs/demo.md).
+
 **Security:** by default the bridge accepts connections from this machine
 only, with no login. To serve other machines, set up logins or encryption
 first, as in [docs/security.md](docs/security.md). The bridge refuses to
@@ -106,6 +111,7 @@ shows how to call methods from it and from the command line.
 
 | Document | Contents |
 |---|---|
+| [docs/demo.md](docs/demo.md) | The `/opc_demo` demo: what's in it and what to try |
 | [docs/address-space.md](docs/address-space.md) | OPC UA nodes, status codes, events, polling |
 | [docs/security.md](docs/security.md) | Endpoints, certificates, users and roles, audit log |
 | [docs/docker.md](docs/docker.md) | Running Factorio and the bridge with Docker |
@@ -119,6 +125,7 @@ Requires Docker and Python 3.11+.
 ```sh
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 scripts/dev-server.sh up          # Factorio 2.0.77 headless + opcua-io; RCON on 127.0.0.1:27015
+scripts/dev-server.sh demo        # build the /opc_demo surface (docs/demo.md)
 .venv/bin/pytest                  # unit + integration tests (integration is skipped without the server)
 .venv/bin/pytest -m "not integration"
 .venv/bin/ruff check .            # lint (rules in ruff.toml)

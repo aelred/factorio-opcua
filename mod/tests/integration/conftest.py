@@ -103,6 +103,7 @@ class Factorio:
         return next((t for t in (tags or []) if t["unit"] == unit), None)
 
     async def clear(self) -> None:
+        await self.client.execute("/opc_demo remove")
         await self.lua(
             'for _, e in pairs(game.surfaces.nauvis.find_entities_filtered{name={"opc-reader","opc-writer"}}) '
             "do e.destroy() end"

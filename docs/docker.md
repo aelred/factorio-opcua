@@ -14,6 +14,8 @@ docker compose up -d --wait   # returns once both are running
 ```
 
 Then connect an OPC UA client to `opc.tcp://127.0.0.1:4840/factorio-opcua/`.
+To have something to look at straight away, build the demo with
+`docker compose exec factorio rcon /opc_demo` (see [demo.md](demo.md)).
 
 - **Data:** the Factorio server keeps its saves and config in
   `deploy/factorio/`. On first start it creates a map and an RCON password

@@ -1,6 +1,7 @@
 -- opcua-io runtime: tracks OPC Reader/Writer entities and serves the RCON API.
 
 local api = require("lib.api")
+local demo = require("lib.demo")
 local gui = require("lib.gui")
 local registry = require("lib.registry")
 
@@ -99,14 +100,82 @@ script.on_event(defines.events.on_gui_closed, safe(gui.on_closed))
 script.on_event(defines.events.on_gui_click, safe(gui.on_click))
 script.on_event(defines.events.on_gui_confirmed, safe(gui.on_confirmed))
 
+-- The demo's update only runs while the demo exists. on_load must register
+-- exactly what was registered before saving, or multiplayer desyncs.
+local demo_update = safe(demo.update)
+local function register_demo_update()
+  script.on_nth_tick(demo.UPDATE_TICKS, demo.exists() and demo_update or nil)
+end
+
 script.on_init(function()
   registry.init()
 end)
+
+script.on_load(register_demo_update)
 
 script.on_configuration_changed(function()
   registry.init()
   registry.rescan()
 end)
+
+-- /opc_demo [leave|remove]: takes the player to the demo surface, which
+-- admins, the server console and RCON can build (once) and remove; `leave`
+-- returns to Nauvis. Anyone may visit and leave.
+local function say(cmd, message)
+  if cmd.player_index then
+    game.get_player(cmd.player_index).print(message)
+  else
+    rcon.print(message)
+  end
+end
+
+local function demo_command(cmd)
+  local player = cmd.player_index and game.get_player(cmd.player_index)
+  local admin = not player or player.admin
+  local action = cmd.parameter or ""
+  if action == "leave" then
+    if player then
+      demo.leave(player)
+    end
+  elseif action == "remove" then
+    if not admin then
+      say(cmd, "[opcua-io] only admins can remove the demo")
+      return
+    end
+    demo.remove()
+    say(cmd, "[opcua-io] demo removed")
+  elseif action == "" then
+    if not demo.exists() then
+      if not admin then
+        say(cmd, "[opcua-io] there is no demo yet; an admin can build it with /opc_demo")
+        return
+      end
+      if game.surfaces[demo.SURFACE] then
+        say(cmd, "[opcua-io] a surface named " .. demo.SURFACE .. " already exists; delete it with /opc_demo remove")
+        return
+      end
+      local names = demo.build()
+      say(cmd, "[opcua-io] demo built with OPC tags: " .. table.concat(names, ", "))
+    elseif not player then
+      say(cmd, "[opcua-io] the demo already exists")
+    end
+    if player then
+      demo.visit(player)
+    end
+  else
+    say(cmd, "[opcua-io] usage: /opc_demo [leave|remove]")
+  end
+end
+
+commands.add_command("opc_demo", "factorio-opcua: build and visit the demo surface; /opc_demo leave|remove",
+  function(cmd)
+    local ok, err = pcall(demo_command, cmd)
+    register_demo_update()
+    if not ok then
+      log("[opcua-io] /opc_demo failed: " .. tostring(err))
+      say(cmd, "[opcua-io] /opc_demo failed: " .. tostring(err))
+    end
+  end)
 
 api.register_commands()
 
