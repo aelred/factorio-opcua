@@ -41,7 +41,8 @@ Choose either option. The bridge works the same with both.
 
 **A. A dedicated server**
 1. Copy `opcua-io_<version>.zip` into the server's `mods/` folder. Players
-   who join download the mod automatically.
+   need it in their own mods folder too: Factorio only downloads mods from
+   the mod portal, and opcua-io isn't there.
 2. Start the server with RCON:
    `factorio --start-server <save> --rcon-port 27015 --rcon-password <pw>`.
 3. In its server settings, set `"auto_pause": false`. Otherwise, with no

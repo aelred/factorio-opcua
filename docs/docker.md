@@ -30,6 +30,26 @@ To have something to look at straight away, build the demo with
   `docker compose up -d --build --force-recreate --wait`. That rebuilds the
   bridge, reinstalls the mod and restarts both.
 
+## Joining the server
+
+1. **Install the mod in your game.** Factorio downloads missing mods only
+   from the mod portal, and opcua-io isn't there. Run
+   `scripts/package-mod.sh` and copy `dist/opcua-io_<version>.zip` into your
+   mods folder (see the [README](../README.md#install) for where it is).
+2. **Match the server's Factorio version,** 2.0.77 (the image tag in
+   `compose.yml`). The server refuses other versions; on Steam, pick one
+   under the game's Properties → Betas.
+3. **Multiplayer → Connect to address:** `localhost:34197`, or this
+   machine's address from another computer. The server may not appear
+   under LAN games: Docker Desktop doesn't pass on LAN broadcasts.
+4. **Let Factorio sync mods** when it asks. The server runs without Space
+   Age unless you set `DLC_SPACE_AGE: "true"` in `compose.yml`, so your game
+   turns Space Age off for the session.
+
+To use admin commands such as `/opc_demo` from chat, promote yourself (this
+works before you first join):
+`docker compose exec factorio rcon /promote <your-name>`.
+
 ## Server settings
 
 On first start, `deploy/server-settings.json` is copied to
