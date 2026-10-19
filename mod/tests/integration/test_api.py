@@ -82,6 +82,9 @@ async def test_reader_emits_nothing_and_writer_keeps_one_ungrouped_section(facto
         ".. tostring(w.enabled) .. ',' .. w.get_section(1).group"
     )
     assert state == "0,false,1,true,"
+    # Not operable: the game doesn't open its own combinator window (the mod opens its panel).
+    operable = f"return tostring({factorio.ref(reader)}.operable) .. ',' .. tostring({factorio.ref(writer)}.operable)"
+    assert await factorio.lua(operable) == "false,false"
 
 
 @pytest.mark.parametrize("payload, message", [

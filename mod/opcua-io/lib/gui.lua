@@ -1,4 +1,4 @@
--- Small custom panel that replaces the combinator GUI for OPC entities.
+-- Small custom panel shown instead of the combinator GUI for OPC entities.
 -- It lets the player set the tag name and shows the current signals.
 -- Writers can't be edited by hand: their values belong to OPC clients.
 
@@ -80,15 +80,35 @@ local function apply(player, element)
   end
 end
 
-function gui.on_opened(event)
-  local entity = event.entity
+local function open_for(player, entity)
   if not (entity and entity.valid and registry.KIND_BY_ENTITY[entity.name]) then
     return
   end
   local entry = registry.get_by_unit(entity.unit_number) or registry.add(entity)
   if entry then
-    gui.open(game.get_player(event.player_index), entry)
+    gui.open(player, entry)
   end
+end
+
+-- OPC entities aren't operable, so the game doesn't open its combinator
+-- window for them (opening it and then replacing it made it flash). The panel
+-- opens on the "open" control instead, unless the player holds something
+-- (e.g. a wire to connect).
+function gui.on_open_input(event)
+  local player = game.get_player(event.player_index)
+  if (player.cursor_stack and player.cursor_stack.valid_for_read) or player.cursor_ghost then
+    return
+  end
+  open_for(player, player.selected)
+end
+
+-- Fallback for entities from saves made before they were made non-operable:
+-- the game still opens its window once, which this replaces.
+function gui.on_opened(event)
+  if event.entity and event.entity.valid then
+    event.entity.operable = false
+  end
+  open_for(game.get_player(event.player_index), event.entity)
 end
 
 function gui.on_closed(event)

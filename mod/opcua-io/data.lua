@@ -40,6 +40,10 @@ local function tinted_icons(proto, tint)
   return { { icon = proto.icon, icon_size = proto.icon_size, tint = tint } }
 end
 
+-- The game's "open" control (left click), used to open the OPC panel: the
+-- entities aren't operable, so the game doesn't open anything itself.
+data:extend({ { type = "custom-input", name = "opcua-io-open", key_sequence = "", linked_game_control = "open-gui" } })
+
 local technology_effects = data.raw["technology"]["circuit-network"].effects
 
 for _, v in pairs(variants) do

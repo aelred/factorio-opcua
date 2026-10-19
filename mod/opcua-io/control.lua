@@ -95,6 +95,7 @@ script.on_event(defines.events.on_post_entity_died, safe(on_post_entity_died),
   { { filter = "type", type = "constant-combinator" } })
 script.on_event(defines.events.on_entity_settings_pasted, safe(on_settings_pasted))
 script.on_event(defines.events.on_player_setup_blueprint, safe(on_setup_blueprint))
+script.on_event("opcua-io-open", safe(gui.on_open_input))
 script.on_event(defines.events.on_gui_opened, safe(gui.on_opened))
 script.on_event(defines.events.on_gui_closed, safe(gui.on_closed))
 script.on_event(defines.events.on_gui_click, safe(gui.on_click))

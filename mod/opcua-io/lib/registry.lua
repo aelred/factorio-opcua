@@ -135,7 +135,10 @@ end
 --   writer: enabled, exactly one section with no logistic group (a group would
 --           share values with other combinators). Existing values are kept.
 --   reader: disabled and no sections, so it never adds to the networks it reads.
+--   both:   not operable, so the game never opens its own combinator window;
+--           the mod opens its panel instead (lib/gui.lua).
 function registry.normalize(entity, kind)
+  entity.operable = false
   local cb = control(entity)
   local keep = {}
   if kind == "writer" then
