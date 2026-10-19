@@ -34,3 +34,19 @@ def test_refresh_closes_panels_whose_entity_is_gone(lua):
     lua.execute("entity.valid = false")
     lua.globals().gui.refresh()
     assert lua.globals().frame.destroyed is True
+
+
+def test_opening_other_entities_leaves_them_alone(lua):
+    lua.execute(SETUP)
+    lua.execute("""
+        opened = {}
+        gui.open = function(player, entry) opened[#opened + 1] = entry.name end
+        game.get_player = function() return {} end
+        chest = { valid = true, name = "wooden-chest", operable = true }
+        gui.on_opened({ player_index = 1, entity = chest })
+        entity.name, entity.operable, entity.unit_number = "opc-reader", true, 7
+        gui.on_opened({ player_index = 1, entity = entity })
+    """)
+    g = lua.globals()
+    assert g.chest.operable is True  # a regression made every opened entity non-operable
+    assert g.entity.operable is False and list(g.opened.values()) == ["r"]

@@ -108,8 +108,12 @@ local function apply(player, element)
   end
 end
 
+local function is_opc(entity)
+  return entity and entity.valid and registry.KIND_BY_ENTITY[entity.name] ~= nil
+end
+
 local function open_for(player, entity)
-  if not (entity and entity.valid and registry.KIND_BY_ENTITY[entity.name]) then
+  if not is_opc(entity) then
     return
   end
   local entry = registry.get_by_unit(entity.unit_number) or registry.add(entity)
@@ -130,13 +134,14 @@ function gui.on_open_input(event)
   open_for(player, player.selected)
 end
 
--- Fallback for entities from saves made before they were made non-operable:
--- the game still opens its window once, which this replaces.
+-- Fallback for OPC entities from saves made before they were made
+-- non-operable: the game still opens its window once, which this replaces.
+-- Any other entity's window is left alone.
 function gui.on_opened(event)
-  if event.entity and event.entity.valid then
+  if is_opc(event.entity) then
     event.entity.operable = false
+    open_for(game.get_player(event.player_index), event.entity)
   end
-  open_for(game.get_player(event.player_index), event.entity)
 end
 
 function gui.on_closed(event)
