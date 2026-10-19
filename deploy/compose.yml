@@ -1,12 +1,30 @@
 # Factorio 2.0 headless server + factorio-opcua bridge. See docs/docker.md.
 #
-#   1. Put the opcua-io mod zip in ./factorio/mods/ (create the folder).
-#   2. docker compose up -d       (first start generates the map and ./factorio/config/)
-#   3. Connect an OPC UA client to opc.tcp://127.0.0.1:4840/factorio-opcua/
+#   1. docker compose up -d --wait   (first start generates the map and ./factorio/config/)
+#   2. Connect an OPC UA client to opc.tcp://127.0.0.1:4840/factorio-opcua/
 services:
+  # Installs opcua-io from this checkout into ./factorio/mods/ on every start,
+  # so the mod always matches the bridge built from the same checkout. Any
+  # other copy (e.g. a release zip) is removed: Factorio refuses duplicates.
+  mod:
+    image: factoriotools/factorio:2.0.77
+    entrypoint:
+      - sh
+      - -c
+      - >-
+        mkdir -p /factorio/mods
+        && rm -rf /factorio/mods/opcua-io /factorio/mods/opcua-io_*
+        && cp -r /src /factorio/mods/opcua-io
+    volumes:
+      - ../mod/opcua-io:/src:ro
+      - ./factorio:/factorio
+
   factorio:
     image: factoriotools/factorio:2.0.77
     restart: unless-stopped
+    depends_on:
+      mod:
+        condition: service_completed_successfully
     environment:
       DLC_SPACE_AGE: "false"     # "true" to run with Space Age
     ports:

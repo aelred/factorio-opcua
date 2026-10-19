@@ -10,9 +10,7 @@ From a clone of this repository:
 
 ```sh
 cd deploy
-mkdir -p factorio/mods
-cp /path/to/opcua-io_<version>.zip factorio/mods/   # from a GitHub release, or scripts/package-mod.sh
-docker compose up -d --wait                       # returns once both are running
+docker compose up -d --wait   # returns once both are running
 ```
 
 Then connect an OPC UA client to `opc.tcp://127.0.0.1:4840/factorio-opcua/`.
@@ -20,10 +18,15 @@ Then connect an OPC UA client to `opc.tcp://127.0.0.1:4840/factorio-opcua/`.
 - **Data:** the Factorio server keeps its saves and config in
   `deploy/factorio/`. On first start it creates a map and an RCON password
   (`factorio/config/rconpw`), which the bridge reads.
+- **The mod:** on every start, the short-lived `mod` service copies
+  opcua-io from this checkout into `factorio/mods/`, so the mod always
+  matches the bridge. Don't add an opcua-io zip there yourself; it's removed.
 - **Startup order:** the bridge starts only once the Factorio service is
-  healthy, meaning RCON answers and opcua-io replies to `/opc_hello`. If the
-  mod is missing from `factorio/mods/`, Factorio stays unhealthy and the
-  bridge doesn't start; `docker compose ps` shows this.
+  healthy, meaning RCON answers and opcua-io replies to `/opc_hello`.
+  `docker compose ps` shows this.
+- **Updating:** after `git pull`, run
+  `docker compose up -d --build --force-recreate --wait`. That rebuilds the
+  bridge, reinstalls the mod and restarts both.
 
 ## Server settings
 
