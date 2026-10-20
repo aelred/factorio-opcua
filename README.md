@@ -1,5 +1,8 @@
 # factorio-opcua
 
+> [!WARNING]  
+> Totally vibe coded. Use at your own risk!
+
 Connect Factorio 2.0 circuit networks to **OPC UA**, the standard protocol
 of industrial automation. SCADA systems, PLCs and OPC clients such as
 Ignition, Node-RED, UaExpert or FreeOpcUa's opcua-client can then read
