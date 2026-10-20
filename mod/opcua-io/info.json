@@ -5,7 +5,7 @@
   "author": "aelred",
   "homepage": "https://github.com/aelred/factorio-opcua",
   "factorio_version": "2.0",
-  "description": "OPC Reader and Writer combinators that connect circuit networks to OPC UA clients such as SCADA systems and PLCs. Needs the factorio-opcua bridge and a server with RCON; see the homepage.",
+  "description": "WARNING: Totally vibe coded. Use at your own risk!\n\nOPC Reader and Writer combinators that connect circuit networks to OPC UA clients such as SCADA systems and PLCs. Needs the factorio-opcua bridge and a server with RCON; see the homepage.",
   "dependencies": [
     "base >= 2.0",
     "? quality",
